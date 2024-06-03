@@ -58,7 +58,7 @@ export default function Start() {
   };
 
   const clear = () => {
-    if (!finished)
+    if (!finished && board)
       setBoard(board.map((row, r) => row.map((grid, c) => ({ ...grid, valid: true, value: grid.mutable ? 0 : grid.value, candidates: [], }))));
   };
 

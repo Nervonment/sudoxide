@@ -1,5 +1,5 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
-// #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::sync::atomic::AtomicU8;
 
@@ -50,7 +50,7 @@ async fn get_sudoku_puzzle(difficulty: State<'_, Difficulty>) -> Result<[[i8; 9]
         4 => random_sudoku_puzzle::<
             StochasticSolver<SudokuPuzzleSimple>,
             TechniquesSolver<SudokuPuzzleFull>,
-        >(45, 1000, 10000),
+        >(45, 800, 10000),
         _ => random_sudoku_puzzle_phishing(),
     })
 }
