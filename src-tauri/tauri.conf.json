@@ -56,10 +56,10 @@
     "windows": [
       {
         "fullscreen": false,
-        "height": 600,
+        "height": 720,
         "resizable": true,
-        "title": "tauri-example",
-        "width": 800
+        "title": "Sudoxide",
+        "width": 1080
       }
     ]
   }

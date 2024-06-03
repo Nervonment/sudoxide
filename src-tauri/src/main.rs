@@ -34,7 +34,7 @@ async fn get_sudoku_puzzle(difficulty: State<'_, Difficulty>) -> Result<[[i8; 9]
         0 => random_sudoku_puzzle::<
             StochasticSolver<SudokuPuzzleSimple>,
             TechniquesSolver<SudokuPuzzleFull>,
-        >(35, 0, 50),
+        >(1, 0, 50),
         1 => random_sudoku_puzzle::<
             StochasticSolver<SudokuPuzzleSimple>,
             TechniquesSolver<SudokuPuzzleFull>,
@@ -56,8 +56,9 @@ async fn get_sudoku_puzzle(difficulty: State<'_, Difficulty>) -> Result<[[i8; 9]
 }
 
 #[tauri::command]
-async fn judge_sudoku(board: [[i8; 9]; 9]) -> [[bool; 9]; 9] {
-    judge(&board).2
+async fn judge_sudoku(board: [[i8; 9]; 9]) -> (bool, [[bool; 9]; 9]) {
+    let res = judge(&board);
+    (res.1, res.2)
 }
 
 struct Difficulty(AtomicU8);

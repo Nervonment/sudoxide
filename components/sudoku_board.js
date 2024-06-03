@@ -5,9 +5,9 @@ const font = Reddit_Mono({ subsets: ["latin"], weight: ["500", "700"] });
 
 function SudokuGrid({ grid, r, c, handleMouseEnter, handleMouseLeave }) {
   return (
-    <div className="h-16 w-16 relative">
+    <div className="h-[72px] w-[72px] relative">
       <div className={cn(
-        "h-full w-full absolute text-3xl flex items-center justify-center cursor-default transition-colors",
+        "h-full w-full absolute text-4xl flex items-center justify-center cursor-default transition-colors",
         !grid.mutable && "font-bold",
         !grid.valid ? "text-destructive" : (grid.mutable && "text-primary"),
         !grid.valid && grid.mutable && "line-through",

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
+import { cn, difficultyDesc } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/tauri";
 import { Settings2 } from "lucide-react";
 import { Poppins } from "next/font/google";
@@ -15,14 +15,6 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const [difficulty, setDifficulty] = useState(2);
-  const difficultyDesc = [
-    "🤪无脑",
-    "😃简单",
-    "🤔普通",
-    "😖困难",
-    "🤯地狱",
-    "🎣钓鱼"
-  ];
 
   useEffect(() => {
     invoke('get_difficulty').then((difficulty) => setDifficulty(difficulty));
@@ -34,7 +26,7 @@ export default function Home() {
         <span>Sudox</span>
         <span className="text-primary">ide</span>
       </h1>
-      <Button asChild>
+      <Button size="lg" asChild>
         <Link href={"/start"}> 开始</Link>
       </Button>
       <Drawer direction="right">
