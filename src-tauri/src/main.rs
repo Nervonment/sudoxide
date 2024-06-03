@@ -34,7 +34,7 @@ async fn get_sudoku_puzzle(difficulty: State<'_, Difficulty>) -> Result<[[i8; 9]
         0 => random_sudoku_puzzle::<
             StochasticSolver<SudokuPuzzleSimple>,
             TechniquesSolver<SudokuPuzzleFull>,
-        >(1, 0, 50),
+        >(30, 0, 50),
         1 => random_sudoku_puzzle::<
             StochasticSolver<SudokuPuzzleSimple>,
             TechniquesSolver<SudokuPuzzleFull>,

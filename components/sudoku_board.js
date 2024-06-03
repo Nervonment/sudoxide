@@ -17,10 +17,10 @@ function SudokuGrid({ grid, r, c, handleMouseEnter, handleMouseLeave }) {
       </div>
       <div className={cn(
         "h-full w-full absolute border-border transition-colors",
-        r % 3 == 0 ? "border-t-[5px]" : "border-t-[2px]",
-        c % 3 == 0 ? "border-l-[5px]" : "border-l-[2px]",
-        r == 8 && "border-b-[5px]",
-        c == 8 && "border-r-[5px]",
+        r % 3 == 0 ? "border-t-[6px]" : "border-t-[2px]",
+        c % 3 == 0 ? "border-l-[6px]" : "border-l-[2px]",
+        r == 8 && "border-b-[6px]",
+        c == 8 && "border-r-[6px]",
         !grid.valid && grid.mutable && "border-[2px] border-destructive"
       )}
 
@@ -28,8 +28,8 @@ function SudokuGrid({ grid, r, c, handleMouseEnter, handleMouseLeave }) {
       </div>
       <div
         className="h-full w-full absolute hover:border-[5px] hover:border-primary"
-        onMouseEnter={() => handleMouseEnter(r, c)}
-        onMouseLeave={() => handleMouseLeave()}>
+        onMouseEnter={() => { if (handleMouseEnter) handleMouseEnter(r, c) }}
+        onMouseLeave={() => { if (handleMouseLeave) handleMouseLeave() }}>
       </div>
     </div>
   )

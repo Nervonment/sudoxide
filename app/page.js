@@ -2,6 +2,7 @@
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["800"] })
 
+import SudokuBoard from "@/components/sudoku_board";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
@@ -20,8 +21,20 @@ export default function Home() {
     invoke('get_difficulty').then((difficulty) => setDifficulty(difficulty));
   }, []);
 
+  const randomPuzzle = [
+    [4, 0, 8, 0, 0, 0, 0, 0, 9],
+    [0, 0, 0, 4, 9, 0, 7, 0, 0],
+    [0, 0, 0, 6, 8, 0, 0, 0, 0],
+    [0, 0, 6, 8, 0, 0, 5, 0, 0],
+    [8, 0, 1, 0, 4, 9, 0, 0, 0],
+    [0, 0, 0, 0, 1, 6, 8, 0, 0],
+    [0, 0, 0, 3, 7, 4, 9, 0, 0],
+    [0, 0, 3, 9, 0, 0, 2, 0, 0],
+    [9, 0, 0, 0, 6, 0, 0, 3, 7],
+  ].map((row) => row.map((val) => ({ value: val, candidates: [], mutable: val == 0, valid: true })));
+
   return (
-    <div className="w-screen h-screen flex flex-col gap-2 items-center justify-center">
+    <div className="w-screen h-screen relative flex flex-col gap-2 items-center justify-center overflow-hidden">
       <h1 className={cn(poppins, "text-5xl font-bold")}>
         <span>Sudox</span>
         <span className="text-primary">ide</span>
@@ -54,6 +67,13 @@ export default function Home() {
           </div>
         </DrawerContent>
       </Drawer>
+
+      <div className="absolute z-[-10] left-[-120px] bottom-[-380px] brightness-75">
+        <SudokuBoard board={randomPuzzle} />
+      </div>
+      <div className="absolute z-[-10] right-[-240px] top-[-320px] brightness-50">
+        <SudokuBoard board={randomPuzzle} />
+      </div>
     </div>
   );
 }

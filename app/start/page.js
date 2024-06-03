@@ -4,11 +4,12 @@ import { Label } from "@/components/ui/label";
 import SudokuBoard from "@/components/sudoku_board";
 import { difficultyDesc } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/tauri";
-import { Loader2, RefreshCcw, Trash2, Undo2 } from "lucide-react";
+import { HelpCircle, Loader2, RefreshCcw, Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRouter } from "next/navigation";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function Start() {
   const [board, setBoard] = useState();
@@ -145,6 +146,17 @@ export default function Start() {
                     </>
                 }
               </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="text-muted-foreground flex items-center gap-1 cursor-pointer">
+                    <p >操作说明</p>
+                    <HelpCircle size={16} />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <p className="text-muted-foreground">将光标移动到格子上，使用数字键1~9填数，使用数字键0或空格清除。</p>
+                </PopoverContent>
+              </Popover>
             </div>
           </>
           :
