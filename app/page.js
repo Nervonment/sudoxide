@@ -8,7 +8,7 @@ import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { cn, difficultyDesc } from "@/lib/utils";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { Settings2 } from "lucide-react";
 import { Poppins } from "next/font/google";
 import Link from "next/link";
