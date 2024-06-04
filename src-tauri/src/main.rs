@@ -1,8 +1,9 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::atomic::AtomicU8;
+use std::sync::{Arc, Mutex};
 
+use serde::Serialize;
 use sudoku::{
     game::generator::random_sudoku_puzzle_phishing,
     neo::{
@@ -16,20 +17,40 @@ use tauri::State;
 
 fn main() {
     tauri::Builder::default()
-        .manage(Difficulty(AtomicU8::new(2)))
+        .manage(SettingsState(Default::default()))
         .invoke_handler(tauri::generate_handler![
             get_sudoku_puzzle,
             judge_sudoku,
             set_difficulty,
-            get_difficulty
+            get_difficulty,
+            set_marking_assist,
+            get_marking_assist,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
+#[derive(Serialize)]
+struct Settings {
+    difficulty: u8,
+    marking_assist: bool,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            difficulty: 2,
+            marking_assist: false,
+        }
+    }
+}
+
+#[derive(Default)]
+struct SettingsState(Arc<Mutex<Settings>>);
+
 #[tauri::command]
-async fn get_sudoku_puzzle(difficulty: State<'_, Difficulty>) -> Result<[[i8; 9]; 9], ()> {
-    let difficulty = difficulty.0.load(std::sync::atomic::Ordering::Relaxed);
+async fn get_sudoku_puzzle(settings: State<'_, SettingsState>) -> Result<[[i8; 9]; 9], ()> {
+    let difficulty = settings.0.lock().unwrap().difficulty;
     Ok(match difficulty {
         0 => random_sudoku_puzzle::<
             StochasticSolver<SudokuPuzzleSimple>,
@@ -61,21 +82,27 @@ async fn judge_sudoku(board: [[i8; 9]; 9]) -> (bool, [[bool; 9]; 9]) {
     (res.1, res.2)
 }
 
-struct Difficulty(AtomicU8);
-
 #[tauri::command]
-fn set_difficulty(new_difficulty: u8, difficulty: State<'_, Difficulty>) {
+fn set_difficulty(new_difficulty: u8, settings: State<'_, SettingsState>) {
     let new_difficulty = if new_difficulty > 5 {
         5
     } else {
         new_difficulty
     };
-    difficulty
-        .0
-        .store(new_difficulty, std::sync::atomic::Ordering::Relaxed);
+    settings.0.lock().unwrap().difficulty = new_difficulty;
 }
 
 #[tauri::command]
-fn get_difficulty(difficulty: State<'_, Difficulty>) -> Result<u8, ()> {
-    Ok(difficulty.0.load(std::sync::atomic::Ordering::Relaxed))
+fn get_difficulty(settings: State<'_, SettingsState>) -> Result<u8, ()> {
+    Ok(settings.0.lock().unwrap().difficulty)
+}
+
+#[tauri::command]
+fn set_marking_assist(marking_assist: bool, settings: State<'_, SettingsState>) {
+    settings.0.lock().unwrap().marking_assist = marking_assist;
+}
+
+#[tauri::command]
+fn get_marking_assist(settings: State<'_, SettingsState>) -> Result<bool, ()> {
+    Ok(settings.0.lock().unwrap().marking_assist)
 }

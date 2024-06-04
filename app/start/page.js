@@ -10,12 +10,23 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRouter } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 
 export default function Start() {
   const [board, setBoard] = useState();
   const currentGridRef = useRef();
+  const [markingCandidates, setMarkingCandidates] = useState(false);
+  const [maxCandidates, setMaxCandidates] = useState([]); // 当前局面下所有格的所有候选数
+  const [markedCandidates, setMarkedCandidates] = useState([]); // 用户标记的所有格的候选数
+  // 掩码候选数，是上述两者按照各格的交集
+  const maskedCandidates = markedCandidates.map((row, r) => row.map((candidatesOfGrid, c) => candidatesOfGrid.map((is, num) => is && maxCandidates[r][c][num])));
+  const rowContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
+  const colContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
+  const blkContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
   const [time, setTime] = useState(0);
   const [finished, setFinished] = useState(false);
+
+  const markingAssistRef = useRef(false); // 是否开启标记辅助
 
   const timeMin = parseInt(time / 60);
   const timeSec = (() => {
@@ -38,28 +49,62 @@ export default function Start() {
 
   useEffect(() => {
     invoke('get_difficulty').then((difficulty) => setDifficulty(difficulty));
+    invoke('get_marking_assist').then((markingAssist) => markingAssistRef.current = markingAssist);
   }, []);
 
-  const getPuzzle = () => {
+  const init = useCallback((board) => {
+    setBoard(board);
+    setMaxCandidates(getMaxCandidates(board));
+    if (markingAssistRef.current) {
+      setMarkedCandidates(Array.from({ length: 9 }, (v) => Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => true))));
+    } else {
+      setMarkedCandidates(Array.from({ length: 9 }, (v) => Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false))));
+    }
+    setTime(0);
+  }, []);
+
+  const getPuzzle = useCallback(() => {
     invoke('get_sudoku_puzzle').then((board) => {
-      let b = board.map((row) => row.map((val) => ({ value: val, candidates: [], mutable: val == 0, valid: true })));
-      setBoard(b);
-      setTime(0);
+      let b = board.map((row) => row.map((val) => ({ value: val, mutable: val == 0, valid: true })));
+      init(b);
     });
+  }, [init]);
+
+  const getMaxCandidates = (board) => {
+    rowContainsRef.current.forEach((row) => row.fill(false));
+    colContainsRef.current.forEach((col) => col.fill(false));
+    blkContainsRef.current.forEach((blk) => blk.fill(false));
+    let rc2b = (r, c) => parseInt(r / 3) * 3 + parseInt(c / 3);
+    board.forEach((row, r) => {
+      row.forEach((grid, c) => {
+        let num = grid.value;
+        rowContainsRef.current[r][num] = true;
+        colContainsRef.current[c][num] = true;
+        blkContainsRef.current[rc2b(r, c)][num] = true;
+      });
+    });
+    return board.map((row, r) => row.map((grid, c) => ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+      !rowContainsRef.current[r][num]
+      && !colContainsRef.current[c][num]
+      && !blkContainsRef.current[rc2b(r, c)][num]
+    )))));
   };
 
   useEffect(() => {
     getPuzzle();
-  }, []);
+  }, [getPuzzle]);
 
   const newPuzzle = () => {
+    setBoard(null);
     getPuzzle();
     setFinished(false);
   };
 
   const clear = () => {
-    if (!finished && board)
-      setBoard(board.map((row, r) => row.map((grid, c) => ({ ...grid, valid: true, value: grid.mutable ? 0 : grid.value, candidates: [], }))));
+    if (!finished && board) {
+      let b = board.map((row, r) => row.map((grid, c) => ({ ...grid, valid: true, value: grid.mutable ? 0 : grid.value })));
+      init(b);
+    }
   };
 
   useEffect(() => {
@@ -75,32 +120,56 @@ export default function Start() {
 
   const onKeyDown = useCallback((event) => {
     if (currentGridRef.current && !finished) {
-      let num = parseInt(event.key);
-      let new_value;
-      if (event.key == ' ') {
-        new_value = 0;
-      } else if (num) {
-        new_value = num;
-      } else {
-        return;
+      // 切换标记候选数模式
+      if (event.key == 'Shift') {
+        setMarkingCandidates(prev => !prev);
       }
-      let [r, c] = currentGridRef.current;
-      if (board[r][c].mutable) {
-        board[r][c].value = new_value;
-        invoke('judge_sudoku', { board: board.map((row) => row.map((grid) => grid.value)) })
-          .then(([finished, validCond]) => {
-            setFinished(finished);
-            setBoard((prev) => {
-              if (prev[r][c].mutable) {
-                prev[r][c].value = new_value;
-                return prev.map((row, r) => row.map((grid, c) => ({ ...grid, valid: validCond[r][c] })))
-              }
-              return prev;
-            });
-          });
+      // 填数或标记候选数
+      else {
+        let key = parseInt(event.key);
+        let num;
+        if (event.key == ' ') {
+          num = 0;
+        } else if (key) {
+          num = key;
+        } else {
+          return;
+        }
+        let [r, c] = currentGridRef.current;
+        if (board[r][c].mutable) {
+          // 填数
+          if (!markingCandidates) {
+            board[r][c].value = num;
+            invoke('judge_sudoku', { board: board.map((row) => row.map((grid) => grid.value)) })
+              .then(([finished, validCond]) => {
+                setFinished(finished);
+                setBoard((prev) => {
+                  prev[r][c].value = num;
+                  setMaxCandidates(getMaxCandidates(prev));
+                  return prev.map((row, r) => row.map((grid, c) => ({
+                    ...grid,
+                    valid: validCond[r][c],
+                  })))
+                });
+              });
+          }
+          // 标记候选数
+          else {
+            // 没有开启标记辅助时，可以标记任意数字
+            // 开启时，只能标记 maxCandidates[r][c] 中的数字
+            if (board[r][c].value == 0 && (!markingAssistRef.current || maxCandidates[r][c][num] || num == 0))
+              setMarkedCandidates((prev) => {
+                if (num == 0) // 按空格键
+                  prev[r][c].fill(false);
+                else
+                  prev[r][c][num] = !prev[r][c][num];
+                return prev.map((row) => row.map((grid) => grid.slice()));
+              });
+          }
+        }
       }
     }
-  }, [board, finished]);
+  }, [board, finished, markingCandidates, maxCandidates]);
 
   useEffect(() => {
     window.addEventListener('keydown', onKeyDown);
@@ -121,12 +190,23 @@ export default function Start() {
   return (
     <div className="h-screen w-screen p-8 flex items-center justify-stretch">
       {
-        board ?
+        board && maskedCandidates ?
           <>
-            <SudokuBoard board={board} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} />
+            <SudokuBoard
+              board={board}
+              candidates={markingAssistRef.current ? maskedCandidates : markedCandidates}
+              handleMouseEnter={handleMouseEnter}
+              handleMouseLeave={handleMouseLeave}
+            />
             <div className="flex-1 flex flex-col gap-6 items-center">
               <div className="flex flex-col gap-1 items-center w-full">
-                <p className="text-4xl font-bold">{difficultyDesc[difficulty]}</p>
+                <div className="relative text-4xl font-bold">
+                  {difficultyDesc[difficulty]}
+                  {
+                    markingAssistRef.current ?
+                      <div className="absolute top-[-10px] right-[-64px] text-xs">(已开启辅助)</div> : <></>
+                  }
+                </div>
                 <Label className="text-muted-foreground">难度</Label>
               </div>
               <div className="flex flex-col gap-1 items-center w-full">
@@ -146,15 +226,27 @@ export default function Start() {
                     </>
                 }
               </div>
+              <div className="flex flex-col gap-1 items-center w-full">
+                <div className="flex gap-2 items-center">
+                  <Label className="text-muted-foreground">标记候选数</Label>
+                  <Switch
+                    checked={markingCandidates}
+                    onCheckedChange={(v) => setMarkingCandidates(v)}
+                  />
+                </div>
+              </div>
               <Popover>
                 <PopoverTrigger asChild>
                   <div className="text-muted-foreground flex items-center gap-1 cursor-pointer">
-                    <p >操作说明</p>
+                    <Label >操作说明</Label>
                     <HelpCircle size={16} />
                   </div>
                 </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  <p className="text-muted-foreground">将光标移动到格子上，使用数字键1~9填数，使用数字键0或空格清除。</p>
+                <PopoverContent className="w-96 text-muted-foreground text-sm">
+                  <p>将光标移动到格子上，即可操作对应格子。</p>
+                  <p><span className="font-bold">填数模式</span>：使用数字键 1~9 填数，使用空格清除。</p>
+                  <p><span className="font-bold">标记候选数模式</span>：使用数字键 1~9 添加或删除候选数，使用空格清除所有候选数。</p>
+                  <p>按 Shift 在<span className="font-bold">填数模式</span>与<span className="font-bold">标记候选数模式</span>之间切换。</p>
                 </PopoverContent>
               </Popover>
             </div>

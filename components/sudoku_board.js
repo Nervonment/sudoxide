@@ -3,7 +3,7 @@ import { Reddit_Mono } from "next/font/google";
 
 const font = Reddit_Mono({ subsets: ["latin"], weight: ["500", "700"] });
 
-function SudokuGrid({ grid, r, c, handleMouseEnter, handleMouseLeave }) {
+function SudokuGrid({ grid, candidatesOfGrid, r, c, handleMouseEnter, handleMouseLeave }) {
   return (
     <div className="h-[72px] w-[72px] relative">
       <div className={cn(
@@ -13,7 +13,23 @@ function SudokuGrid({ grid, r, c, handleMouseEnter, handleMouseLeave }) {
         !grid.valid && grid.mutable && "line-through",
         font.className
       )}>
-        {grid.value > 0 ? grid.value : ""}
+        {
+          grid.value > 0
+            ? grid.value
+            : candidatesOfGrid ? <div className="grid grid-cols-3">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                <div
+                  className={cn(
+                    "h-[20px] w-[20px] text-xs flex items-center justify-center brightness-50 transition-colors",
+                    candidatesOfGrid[num] ? "text-primary" : "text-transparent"
+                  )}
+                  key={num}
+                >
+                  {num}
+                </div>
+              ))}
+            </div> : <></>
+        }
       </div>
       <div className={cn(
         "h-full w-full absolute border-border transition-colors",
@@ -23,7 +39,6 @@ function SudokuGrid({ grid, r, c, handleMouseEnter, handleMouseLeave }) {
         c == 8 && "border-r-[6px]",
         !grid.valid && grid.mutable && "border-[2px] border-destructive"
       )}
-
       >
       </div>
       <div
@@ -35,14 +50,14 @@ function SudokuGrid({ grid, r, c, handleMouseEnter, handleMouseLeave }) {
   )
 }
 
-export default function SudokuBoard({ board, handleMouseEnter, handleMouseLeave }) {
+export default function SudokuBoard({ board, candidates, handleMouseEnter, handleMouseLeave }) {
   return (
     <>
       <div className="flex flex-col">
         {board.map((row, r) => (
           <div className="flex" key={r}>
             {row.map((grid, c) => (
-              <SudokuGrid grid={grid} key={c} r={r} c={c} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} />
+              <SudokuGrid grid={grid} candidatesOfGrid={candidates ? candidates[r][c] : null} key={c} r={r} c={c} handleMouseEnter={handleMouseEnter} handleMouseLeave={handleMouseLeave} />
             ))}
           </div>))}
       </div>
