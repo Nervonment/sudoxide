@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn, difficultyDesc } from "@/lib/utils";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { ChevronDown, HelpCircle, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Poppins } from "next/font/google";
