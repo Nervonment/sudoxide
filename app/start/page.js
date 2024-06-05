@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 import SudokuBoard from "@/components/sudoku_board";
 import { difficultyDesc } from "@/lib/utils";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { HelpCircle, Loader2, RefreshCcw, Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button";
