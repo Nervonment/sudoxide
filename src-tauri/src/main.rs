@@ -1,17 +1,14 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::{Arc, Mutex};
-
 use serde::Serialize;
+use std::sync::{Arc, Mutex};
 use sudoku::{
-    game::generator::random_sudoku_puzzle_phishing,
-    neo::{
-        generator::random_sudoku_puzzle,
-        judge::judge_sudoku as judge,
-        puzzle::{SudokuPuzzleFull, SudokuPuzzleSimple},
-        solver::{StochasticSolver, TechniquesSolver},
+    generator::{
+        random_sudoku_puzzle_easy, random_sudoku_puzzle_extraeasy, random_sudoku_puzzle_extrahard,
+        random_sudoku_puzzle_hard, random_sudoku_puzzle_normal, random_sudoku_puzzle_ultimate,
     },
+    judge::judge_sudoku as judge,
 };
 use tauri::State;
 
@@ -52,33 +49,18 @@ struct SettingsState(Arc<Mutex<Settings>>);
 async fn get_sudoku_puzzle(settings: State<'_, SettingsState>) -> Result<[[i8; 9]; 9], ()> {
     let difficulty = settings.0.lock().unwrap().difficulty;
     Ok(match difficulty {
-        0 => random_sudoku_puzzle::<
-            StochasticSolver<SudokuPuzzleSimple>,
-            TechniquesSolver<SudokuPuzzleFull>,
-        >(30, 0, 50),
-        1 => random_sudoku_puzzle::<
-            StochasticSolver<SudokuPuzzleSimple>,
-            TechniquesSolver<SudokuPuzzleFull>,
-        >(50, 50, 90),
-        2 => random_sudoku_puzzle::<
-            StochasticSolver<SudokuPuzzleSimple>,
-            TechniquesSolver<SudokuPuzzleFull>,
-        >(55, 90, 200),
-        3 => random_sudoku_puzzle::<
-            StochasticSolver<SudokuPuzzleSimple>,
-            TechniquesSolver<SudokuPuzzleFull>,
-        >(50, 200, 1000),
-        4 => random_sudoku_puzzle::<
-            StochasticSolver<SudokuPuzzleSimple>,
-            TechniquesSolver<SudokuPuzzleFull>,
-        >(45, 800, 10000),
-        _ => random_sudoku_puzzle_phishing(),
+        0 => random_sudoku_puzzle_extraeasy().0,
+        1 => random_sudoku_puzzle_easy().0,
+        2 => random_sudoku_puzzle_normal().0,
+        3 => random_sudoku_puzzle_hard().0,
+        4 => random_sudoku_puzzle_extrahard().0,
+        _ => random_sudoku_puzzle_ultimate().0,
     })
 }
 
 #[tauri::command]
 async fn judge_sudoku(board: [[i8; 9]; 9]) -> (bool, [[bool; 9]; 9]) {
-    let res = judge(&board);
+    let res = judge(&sudoku::Grid(board));
     (res.1, res.2)
 }
 
