@@ -1,0 +1,23 @@
+{
+    "version": "0.2.1",
+    "notes": "See the assets to download this version and install.",
+    "pub_date": "2024-06-07T19:24:56.884Z",
+    "platforms": {
+        "darwin-aarch64": {
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSSkZoaTBncDFPUW1aTVBCaHE5eUpnejhWSTNaOE9rV2YzZnlzS3ZTSzVRWlB2aytMUm9mZzNRbWw4ZFlSTWNGMTd2dmFjU3haNlB3UkRTVkQvK2hrTHo2RHArLzYwNXdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzE3Nzg3OTU5CWZpbGU6U3Vkb3hpZGUuYXBwLnRhci5negpoaXVYcWJLOWt5Wm84QTY5aVczZHJnNncxK2lMckhVQWlmQ1R6ZFVYbzczMkhUVitSc3hsK0xqYlpQcmNaVTI5d0NIZ0poeElzMGRuRUlsTDhibHdCdz09Cg==",
+            "url": "https://gitee.com/Nervonment/sudoxide/releases/download/v0.2.1/Sudoxide_aarch64.app.tar.gz"
+        },
+        "darwin-x86_64": {
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSSkZoaTBncDFPUXY0SE1XM2dNSXl4RStFOFI3Z2RtRTlWd2tMbUQ4dXo5Y1BzSHBWYVhIQnVHYXB6cmNxNWVtcG5hbEVNMDBWTnh1bHpsa1BaSG50d1RUMkZJemJETUFJPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzE3Nzg3OTc0CWZpbGU6U3Vkb3hpZGUuYXBwLnRhci5negpETGczWkhFcnc0eWlaYWpvaXZIQWdaQndwa3Y0MzRwSUhwendLYXF4QlVSS0FXYldsTCt5R2JxRXZWSkhsL3hnbEUzZEVveSswaXdDejA2RWxjRllDdz09Cg==",
+            "url": "https://gitee.com/Nervonment/sudoxide/releases/download/v0.2.1/Sudoxide_x64.app.tar.gz"
+        },
+        "linux-x86_64": {
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSSkZoaTBncDFPUWw3bExjWnA0MEVZV29qQ0VUR0gvL3hzMllhSElyQzZNNmlnWHJpVFpJRmEwY3RFZm1LVGdvT2lyQVBQTDR2dURZeHFBYXlESXJmTnhjUnE4R2psRFFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzE3Nzg4MTU2CWZpbGU6c3Vkb3hpZGVfMC4yLjFfYW1kNjQuQXBwSW1hZ2UudGFyLmd6CmJGbGdyc1ZzM3VaTkhTZkRqMU1Ec1JpNFZqY0l6SVYwY25FMHc3T2l1MWtGdTJFdStQd0pWUVRhdDdSWlBFS0JUTktIcWlwYnRKWWo3QXd4M0tGZkJBPT0K",
+            "url": "https://github.com/Nervonment/sudoxide/releases/download/v0.2.1/sudoxide_0.2.1_amd64.AppImage.tar.gz"
+        },
+        "windows-x86_64": {
+            "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSSkZoaTBncDFPUWpZcHovMEQzVll6anB2aEpvRzV0OEI4WmRCMlR0dmpMWWxnUjlKRmd1MFdWd0ViU29pZGZWMGZLYXlyQVJ1Q1RaYzNPYnl6Y0ovcU9ZdUtSNlZUQmdFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzE3Nzg4Mjg5CWZpbGU6U3Vkb3hpZGVfMC4yLjFfeDY0X3poLUNOLm1zaS56aXAKdVFUcmRWNFRZeEJjUkE3M2FaTTJuUzJlRTM0TXZ6NEFSajFNWDJKYnNGZlAySS9EeGF2bEhXdFpFdVcvcW1nUnlZalZqZG1iY214Slprc0tHaThNQ1E9PQo=",
+            "url": "https://gitee.com/Nervonment/sudoxide/releases/download/v0.2.1/Sudoxide_0.2.1_x64_zh-CN.msi.zip"
+        }
+    }
+}
