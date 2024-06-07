@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "Sudoxide",
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "tauri": {
     "allowlist": {
@@ -65,7 +65,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://nervonment.github.io/sudoxide/versions/update.json"
+        "https://nervonment.github.io/sudoxide_versions/update.json"
       ],
       "dialog": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQyNEU5RDgyQjQxODE2NDkKUldSSkZoaTBncDFPUW9KdEtMMTRsUVptUG9BUGtDUXdnd0QwdkRoays2YkZLVjdBWG1LODlmNVEK",
