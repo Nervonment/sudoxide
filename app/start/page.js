@@ -87,7 +87,8 @@ export default function Start() {
       });
     });
     return board.map((row, r) => row.map((grid, c) => ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-      !rowContainsRef.current[r][num]
+      board[r][c].value == 0
+      && !rowContainsRef.current[r][num]
       && !colContainsRef.current[c][num]
       && !blkContainsRef.current[rc2b(r, c)][num]
     )))));
@@ -191,9 +192,8 @@ export default function Start() {
           }
           // 标记候选数
           else {
-            // 没有开启标记辅助时，可以标记任意数字
-            // 开启时，只能标记 maxCandidates[r][c] 中的数字
-            if (board[r][c].value == 0 && (!markingAssistRef.current || maxCandidates[r][c][num] || event.key == ' ')) {
+            // 只能标记 maxCandidates[r][c] 中的数字
+            if (board[r][c].value == 0 && (maxCandidates[r][c][num] || event.key == ' ')) {
               if (event.key == ' ') { // 按空格键 
                 if (!markedCandidates[r][c].every((is, num) => num == 0 || !is)) {
                   pushHistory(board, markedCandidates);
@@ -240,7 +240,7 @@ export default function Start() {
           <>
             <SudokuBoard
               board={board}
-              candidates={markingAssistRef.current ? maskedCandidates : markedCandidates}
+              candidates={maskedCandidates}
               handleMouseEnter={handleMouseEnter}
               handleMouseLeave={handleMouseLeave}
             />

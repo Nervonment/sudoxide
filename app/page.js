@@ -105,7 +105,7 @@ export default function Home() {
                   </div>
                 </PopoverTrigger>
                 <PopoverContent>
-                  <p className="text-sm">开启标记辅助后，每个格子中的候选数会自动更新</p>
+                  <p className="text-sm">开启标记辅助后，开局时会标记上所有的候选数字</p>
                 </PopoverContent>
               </Popover>
               <Switch
