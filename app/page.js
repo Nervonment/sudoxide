@@ -3,16 +3,20 @@
 const poppins = Poppins({ subsets: ["latin"], weight: ["800"] })
 
 import SudokuBoard from "@/components/sudoku_board";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn, difficultyDesc } from "@/lib/utils";
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/tauri";
-import { ChevronDown, HelpCircle, Settings2 } from "lucide-react";
+import { checkUpdate, installUpdate } from "@tauri-apps/api/updater";
+import { ChevronDown, HelpCircle, Loader2, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Poppins } from "next/font/google";
 import Link from "next/link";
@@ -21,10 +25,25 @@ import { useEffect, useState } from "react";
 export default function Home() {
   const [difficulty, setDifficulty] = useState(2);
   const [markingAssist, setMarkingAssist] = useState(false);
+  const [appVersion, setAppversion] = useState("");
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [updateManifest, setUpdateManifest] = useState({});
+  const [updating, setUpdating] = useState(false);
+  const [updateFailed, setUpdateFailed] = useState(false);
 
   useEffect(() => {
     invoke('get_difficulty').then((difficulty) => setDifficulty(difficulty));
     invoke('get_marking_assist').then((markingAssist) => setMarkingAssist(markingAssist));
+  }, []);
+
+  useEffect(() => {
+    getVersion().then(setAppversion);
+    checkUpdate().then(({ shouldUpdate, manifest }) => {
+      if (shouldUpdate) {
+        setUpdateManifest(manifest);
+        setUpdateDialogOpen(true);
+      }
+    })
   }, []);
 
   const randomPuzzle = [
@@ -58,6 +77,10 @@ export default function Home() {
         </DrawerTrigger>
         <DrawerContent>
           <div className="w-80 py-8 px-4 flex flex-col justify-center gap-4">
+            <div className="font-bold text-lg">
+              设置
+            </div>
+            <Separator />
             <div className="flex flex-col justify-center gap-4 mb-4">
               <div className="flex justify-between">
                 <Label className="font-bold">难度</Label>
@@ -99,7 +122,7 @@ export default function Home() {
                 <DropdownMenuTrigger asChild>
                   <Label className="flex items-center cursor-pointer">{
                     { "light": "浅色", "dark": "深色", "system": "跟随系统" }[theme]
-                  }<ChevronDown size={14}/>
+                  }<ChevronDown size={14} />
                   </Label>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -115,9 +138,78 @@ export default function Home() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            <div className="flex-1 flex justify-center items-end">
+              <Label className="text-muted-foreground">版本：v{appVersion}</Label>
+            </div>
           </div>
         </DrawerContent>
       </Drawer>
+
+      <AlertDialog
+        defaultOpen={false}
+        open={updateDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              版本更新
+            </AlertDialogTitle>
+            {updateManifest ?
+              <AlertDialogDescription>
+                <p>发现新版本v{updateManifest.version}。更新内容：</p>
+                <br />
+                <p>{updateManifest.body}</p>
+                <br />
+                <p>是否立即更新？</p>
+                {
+                  updateFailed ?
+                    <>
+                      <br />
+                      <p className="text-destructive">
+                        更新失败，请前往
+                        <button
+                          className="underline bg-none border-none"
+                          onClick={() => window.open("https://github.com/Nervonment/sudoxide/releases")}
+                        >
+                          发布页面
+                        </button>
+                        手动下载更新。
+                      </p>
+                    </>
+                    : <></>
+                }
+              </AlertDialogDescription> : <></>
+            }
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setUpdateDialogOpen(false);
+                setUpdateFailed(false);
+                setUpdating(false);
+              }}
+            >
+              稍后再说
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updating}
+              className="flex items-center"
+              onClick={() => {
+                setUpdating(true);
+                installUpdate()
+                  .catch(() => {
+                    setUpdateFailed(true);
+                  });
+              }}
+            >
+              {
+                updating ?
+                  <>更新中<Loader2 size={14} className="turn" /> </> : <>立即更新</>
+              }
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="absolute z-[-10] left-[-120px] bottom-[-380px] brightness-75">
         <SudokuBoard board={randomPuzzle} />
