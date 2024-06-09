@@ -1,6 +1,11 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use app::hint::{
+    locked_candidates::Pointing,
+    singles::{HiddenSingle, NakedSingle},
+    GetHint, Hint,
+};
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use sudoku::{
@@ -9,6 +14,8 @@ use sudoku::{
         random_sudoku_puzzle_hard, random_sudoku_puzzle_normal, random_sudoku_puzzle_ultimate,
     },
     judge::judge_sudoku as judge,
+    state::full_state::FullState,
+    Grid,
 };
 use tauri::State;
 
@@ -22,6 +29,7 @@ fn main() {
             get_difficulty,
             set_marking_assist,
             get_marking_assist,
+            get_hint
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -59,8 +67,8 @@ async fn get_sudoku_puzzle(settings: State<'_, SettingsState>) -> Result<[[i8; 9
 }
 
 #[tauri::command]
-async fn judge_sudoku(board: [[i8; 9]; 9]) -> (bool, [[bool; 9]; 9]) {
-    let res = judge(&sudoku::Grid(board));
+async fn judge_sudoku(grid: [[i8; 9]; 9]) -> (bool, [[bool; 9]; 9]) {
+    let res = judge(&sudoku::Grid(grid));
     (res.1, res.2)
 }
 
@@ -87,4 +95,21 @@ fn set_marking_assist(marking_assist: bool, settings: State<'_, SettingsState>) 
 #[tauri::command]
 fn get_marking_assist(settings: State<'_, SettingsState>) -> Result<bool, ()> {
     Ok(settings.0.lock().unwrap().marking_assist)
+}
+
+#[tauri::command]
+fn get_hint(grid: [[i8; 9]; 9], candidates: [[[bool; 10]; 9]; 9]) -> Option<Hint> {
+    let state = FullState::new(Grid(grid), candidates);
+    let potential_hints = [
+        Pointing::get_hint,
+        HiddenSingle::get_hint,
+        NakedSingle::get_hint,
+    ];
+    for potential_hint in potential_hints {
+        let hint = potential_hint(&state);
+        if hint.is_some() {
+            return hint;
+        }
+    }
+    None
 }

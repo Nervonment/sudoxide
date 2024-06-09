@@ -2,7 +2,7 @@
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["800"] })
 
-import SudokuBoard from "@/components/sudoku_board";
+import SudokuGrid from "@/components/sudoku_grid";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
@@ -212,10 +212,10 @@ export default function Home() {
       </AlertDialog>
 
       <div className="absolute z-[-10] left-[-120px] bottom-[-380px] brightness-75">
-        <SudokuBoard board={randomPuzzle} />
+        <SudokuGrid grid={randomPuzzle} />
       </div>
       <div className="absolute z-[-10] right-[-240px] top-[-320px] brightness-50">
-        <SudokuBoard board={randomPuzzle} />
+        <SudokuGrid grid={randomPuzzle} />
       </div>
     </div>
   );

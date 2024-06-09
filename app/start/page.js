@@ -1,10 +1,10 @@
 'use client'
 
 import { Label } from "@/components/ui/label";
-import SudokuBoard from "@/components/sudoku_board";
-import { difficultyDesc } from "@/lib/utils";
+import SudokuGrid from "@/components/sudoku_grid";
+import { difficultyDesc, hintColor } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/tauri";
-import { HelpCircle, Loader2, RefreshCcw, Trash2, Undo2 } from "lucide-react";
+import { HelpCircle, Lightbulb, Loader2, RefreshCcw, SquarePen, Tornado, Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -12,15 +12,17 @@ import { useRouter } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function Start() {
-  const [board, setBoard] = useState();
-  const currentGridRef = useRef();
+  const [grid, setGrid] = useState();
+  const currentCellRef = useRef();
   const [maxCandidates, setMaxCandidates] = useState([]); // 当前局面下所有格的所有候选数
   const [markedCandidates, setMarkedCandidates] = useState([]); // 用户标记的所有格的候选数
   // 掩码候选数，是上述两者按照各格的交集
-  const maskedCandidates = markedCandidates.map((row, r) => row.map((candidatesOfGrid, c) => candidatesOfGrid.map((is, num) => is && maxCandidates[r][c][num])));
+  const maskedCandidates = markedCandidates.map((row, r) => row.map((candidatesOfCell, c) => candidatesOfCell.map((is, num) => is && maxCandidates[r][c][num])));
   const rowContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
   const colContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
   const blkContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
+  const [hint, setHint] = useState(null);
+  const [showingHint, setShowingHint] = useState(false);
   const [time, setTime] = useState(0);
   const [finished, setFinished] = useState(false);
 
@@ -36,10 +38,10 @@ export default function Start() {
   })();
   const rest = (() => {
     let res = 0;
-    if (board)
-      board.forEach(row => {
-        row.forEach(grid => {
-          if (grid.value == 0)
+    if (grid)
+      grid.forEach(row => {
+        row.forEach(cell => {
+          if (cell.value == 0)
             res += 1;
         });
       });
@@ -53,41 +55,42 @@ export default function Start() {
     invoke('get_marking_assist').then((markingAssist) => markingAssistRef.current = markingAssist);
   }, []);
 
-  const init = useCallback((board) => {
-    setBoard(board);
-    setMaxCandidates(getMaxCandidates(board));
+  const init = useCallback((grid) => {
+    setGrid(grid);
+    setMaxCandidates(getMaxCandidates(grid));
     if (markingAssistRef.current) {
       setMarkedCandidates(Array.from({ length: 9 }, (v) => Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => true))));
     } else {
       setMarkedCandidates(Array.from({ length: 9 }, (v) => Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false))));
     }
     setTime(0);
+    hideHint();
     historyRef.current = [];
     futureRef.current = [];
   }, []);
 
   const getPuzzle = useCallback(() => {
-    invoke('get_sudoku_puzzle').then((board) => {
-      let b = board.map((row) => row.map((val) => ({ value: val, mutable: val == 0, valid: true })));
-      init(b);
+    invoke('get_sudoku_puzzle').then((grid) => {
+      let g = grid.map((row) => row.map((val) => ({ value: val, mutable: val == 0, valid: true })));
+      init(g);
     });
   }, [init]);
 
-  const getMaxCandidates = (board) => {
+  const getMaxCandidates = (grid) => {
     rowContainsRef.current.forEach((row) => row.fill(false));
     colContainsRef.current.forEach((col) => col.fill(false));
     blkContainsRef.current.forEach((blk) => blk.fill(false));
     let rc2b = (r, c) => parseInt(r / 3) * 3 + parseInt(c / 3);
-    board.forEach((row, r) => {
-      row.forEach((grid, c) => {
-        let num = grid.value;
+    grid.forEach((row, r) => {
+      row.forEach((cell, c) => {
+        let num = cell.value;
         rowContainsRef.current[r][num] = true;
         colContainsRef.current[c][num] = true;
         blkContainsRef.current[rc2b(r, c)][num] = true;
       });
     });
-    return board.map((row, r) => row.map((grid, c) => ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-      board[r][c].value == 0
+    return grid.map((row, r) => row.map((cell, c) => ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+      grid[r][c].value == 0
       && !rowContainsRef.current[r][num]
       && !colContainsRef.current[c][num]
       && !blkContainsRef.current[rc2b(r, c)][num]
@@ -99,15 +102,15 @@ export default function Start() {
   }, [getPuzzle]);
 
   const newPuzzle = () => {
-    setBoard(null);
+    setGrid(null);
     getPuzzle();
     setFinished(false);
   };
 
   const clear = () => {
-    if (!finished && board) {
-      let b = board.map((row, r) => row.map((grid, c) => ({ ...grid, valid: true, value: grid.mutable ? 0 : grid.value })));
-      init(b);
+    if (!finished && grid) {
+      let g = grid.map((row, r) => row.map((cell, c) => ({ ...cell, valid: true, value: cell.mutable ? 0 : cell.value })));
+      init(g);
     }
   };
 
@@ -122,44 +125,77 @@ export default function Start() {
     };
   }, [finished]);
 
-  const pushHistory = useCallback((board, markedCandidates) => {
+  const pushHistory = useCallback((grid, markedCandidates) => {
     historyRef.current.push({
-      board: board.map((row) => row.map((grid) => ({ ...grid }))),
-      markedCandidates: markedCandidates.map((row) => row.map((grid) => grid.slice()))
+      grid: grid.map((row) => row.map((cell) => ({ ...cell }))),
+      markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
     });
     futureRef.current = [];
   }, []);
 
+  const fillGrid = useCallback((r, c, num) => {
+    if (grid[r][c].value != num) {
+      pushHistory(grid, markedCandidates);
+      hideHint();
+      grid[r][c].value = num;
+      invoke('judge_sudoku', { grid: grid.map((row) => row.map((grid) => grid.value)) })
+        .then(([finished, validCond]) => {
+          setFinished(finished);
+          setGrid((prev) => {
+            prev[r][c].value = num;
+            setMaxCandidates(getMaxCandidates(prev));
+            return prev.map((row, r) => row.map((cell, c) => ({
+              ...cell,
+              valid: validCond[r][c],
+            })))
+          });
+        });
+    }
+  }, [grid, markedCandidates, pushHistory]);
+
+  const removeCandidates = (candidates) => {
+    pushHistory(grid, markedCandidates);
+    hideHint();
+    setMarkedCandidates((prev) => {
+      candidates.forEach(([r, c, num]) => {
+        prev[r][c][num] = false;
+      });
+      return prev.map((row) => row.map((cell) => cell.slice()));
+    })
+  };
+
   const onKeyDown = useCallback((event) => {
-    if (!finished && board && markedCandidates) {
+    if (!finished && grid && markedCandidates) {
       // 撤销
       if (event.key == 'z') {
         if (historyRef.current.length != 0) {
           futureRef.current.push({
-            board: board.map((row) => row.map((grid) => ({ ...grid }))),
-            markedCandidates: markedCandidates.map((row) => row.map((grid) => grid.slice()))
+            grid: grid.map((row) => row.map((cell) => ({ ...cell }))),
+            markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
           });
-          let { board: b, markedCandidates: m } = historyRef.current.pop();
-          setBoard(b);
-          setMaxCandidates(getMaxCandidates(b));
+          let { grid: g, markedCandidates: m } = historyRef.current.pop();
+          setGrid(g);
+          setMaxCandidates(getMaxCandidates(g));
           setMarkedCandidates(m);
+          hideHint();
         }
       }
       // 重做
       else if (event.key == 'x') {
         if (futureRef.current.length != 0) {
           historyRef.current.push({
-            board: board.map((row) => row.map((grid) => ({ ...grid }))),
-            markedCandidates: markedCandidates.map((row) => row.map((grid) => grid.slice()))
+            grid: grid.map((row) => row.map((cell) => ({ ...cell }))),
+            markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
           });
-          let { board: b, markedCandidates: m } = futureRef.current.pop();
-          setBoard(b);
-          setMaxCandidates(getMaxCandidates(b));
+          let { grid: g, markedCandidates: m } = futureRef.current.pop();
+          setGrid(g);
+          setMaxCandidates(getMaxCandidates(g));
           setMarkedCandidates(m);
+          hideHint();
         }
       }
       // 填数或标记候选数
-      else if (currentGridRef.current) {
+      else if (currentCellRef.current) {
         let nummap = { '!': 1, '@': 2, '#': 3, '$': 4, '%': 5, '^': 6, '&': 7, '*': 8, '(': 9, ' ': 0 };
         let num;
         if (event.key in nummap)
@@ -168,46 +204,32 @@ export default function Start() {
           num = parseInt(event.key);
         if (!num && event.key !== ' ')
           return;
-        console.log(num);
-        let [r, c] = currentGridRef.current;
-        if (board[r][c].mutable) {
+        let [r, c] = currentCellRef.current;
+        if (grid[r][c].mutable) {
           // 填数
           if (!event.shiftKey) {
-            if (board[r][c].value != num) {
-              pushHistory(board, markedCandidates);
-              board[r][c].value = num;
-              invoke('judge_sudoku', { board: board.map((row) => row.map((grid) => grid.value)) })
-                .then(([finished, validCond]) => {
-                  setFinished(finished);
-                  setBoard((prev) => {
-                    prev[r][c].value = num;
-                    setMaxCandidates(getMaxCandidates(prev));
-                    return prev.map((row, r) => row.map((grid, c) => ({
-                      ...grid,
-                      valid: validCond[r][c],
-                    })))
-                  });
-                });
-            }
+            fillGrid(r, c, num);
           }
           // 标记候选数
           else {
             // 只能标记 maxCandidates[r][c] 中的数字
-            if (board[r][c].value == 0 && (maxCandidates[r][c][num] || event.key == ' ')) {
+            if (grid[r][c].value == 0 && (maxCandidates[r][c][num] || event.key == ' ')) {
               if (event.key == ' ') { // 按空格键 
                 if (!markedCandidates[r][c].every((is, num) => num == 0 || !is)) {
-                  pushHistory(board, markedCandidates);
+                  pushHistory(grid, markedCandidates);
+                  hideHint();
                   setMarkedCandidates((prev) => {
                     prev[r][c].fill(false);
-                    return prev.map((row) => row.map((grid) => grid.slice()));
+                    return prev.map((row) => row.map((cell) => cell.slice()));
                   })
                 }
               }
               else {
-                pushHistory(board, markedCandidates);
+                pushHistory(grid, markedCandidates);
+                hideHint();
                 setMarkedCandidates((prev) => {
                   prev[r][c][num] = !prev[r][c][num];
-                  return prev.map((row) => row.map((grid) => grid.slice()));
+                  return prev.map((row) => row.map((cell) => cell.slice()));
                 })
               }
             }
@@ -215,7 +237,7 @@ export default function Start() {
         }
       }
     }
-  }, [board, finished, maxCandidates, markedCandidates, pushHistory]);
+  }, [grid, finished, maxCandidates, markedCandidates, pushHistory, fillGrid]);
 
   useEffect(() => {
     window.addEventListener('keydown', onKeyDown);
@@ -225,10 +247,41 @@ export default function Start() {
   }, [onKeyDown]);
 
   const handleMouseEnter = (r, c) => {
-    currentGridRef.current = [r, c];
+    currentCellRef.current = [r, c];
   }
   const handleMouseLeave = () => {
-    currentGridRef.current = null;
+    currentCellRef.current = null;
+  }
+
+  const getHintAndShow = () => {
+    invoke('get_hint', {
+      grid: grid.map((row) => row.map((cell) => cell.value)),
+      candidates: maskedCandidates
+    }).then((hint) => {
+      setHint(hint);
+      console.log(hint);
+      setShowingHint(true);
+    });
+  }
+
+  const hideHint = () => {
+    setHint(null);
+    setShowingHint(false);
+  }
+
+  const applyHintOption = () => {
+    if (hint) {
+      let option = hint.option;
+      if ("Direct" in option) {
+        fillGrid(option.Direct[0], option.Direct[1], option.Direct[2]);
+      }
+      else if ("ReducingCandidates" in option) {
+        let toRemove = option.ReducingCandidates.map(
+          (pair) => pair[0].map(([r, c]) => pair[1].map((num) => [r, c, num])).flat()
+        ).flat();
+        removeCandidates(toRemove);
+      }
+    }
   }
 
   const router = useRouter();
@@ -236,13 +289,14 @@ export default function Start() {
   return (
     <div className="h-screen w-screen p-8 flex items-center justify-stretch">
       {
-        board && maskedCandidates ?
+        grid && maskedCandidates ?
           <>
-            <SudokuBoard
-              board={board}
+            <SudokuGrid
+              grid={grid}
               candidates={maskedCandidates}
               handleMouseEnter={handleMouseEnter}
               handleMouseLeave={handleMouseLeave}
+              visualElements={hint ? hint.visual_elements : null}
             />
             <div className="flex-1 flex flex-col gap-6 items-center">
               <div className="flex flex-col gap-1 items-center w-full">
@@ -291,6 +345,26 @@ export default function Start() {
                   </div>
                 </PopoverContent>
               </Popover>
+
+              {
+                showingHint ?
+                  (hint ?
+                    <div className="flex flex-col items-center gap-2">
+                      <Label>{hint.name}</Label>
+                      <p>
+                        {hint.description.map((seg, idx) => (
+                          <span
+                            style={{ color: hintColor[seg.color] }}
+                            key={idx}
+                          >
+                            {seg.text}
+                          </span>
+                        ))}
+                      </p>
+                    </div>
+                    : <p>无可用提示</p>)
+                  : <></>
+              }
             </div>
           </>
           :
@@ -302,8 +376,21 @@ export default function Start() {
 
       <div className="absolute right-0 flex flex-col gap-1">
         <TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="link" onClick={showingHint && hint ? applyHintOption : getHintAndShow}>
+                  {showingHint && hint ? <SquarePen /> : <Lightbulb />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{showingHint && hint ? "执行" : "提示"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           <Tooltip>
-            <TooltipTrigger>
+            <TooltipTrigger asChild>
               <Button variant="link" onClick={newPuzzle}>
                 <RefreshCcw />
               </Button>
@@ -313,9 +400,10 @@ export default function Start() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger>
+            <TooltipTrigger asChild>
               <Button variant="link" onClick={clear}>
                 <Trash2 />
               </Button>
@@ -325,9 +413,10 @@ export default function Start() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+
         <TooltipProvider>
           <Tooltip>
-            <TooltipTrigger>
+            <TooltipTrigger asChild>
               <Button variant="link" onClick={() => router.replace("/")}>
                 <Undo2 />
               </Button>
