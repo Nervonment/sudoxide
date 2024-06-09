@@ -2,7 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use app::hint::{
-    locked_candidates::Pointing,
+    hidden_subsets::HiddenPair,
+    locked_candidates::{Claiming, Pointing},
     singles::{HiddenSingle, NakedSingle},
     GetHint, Hint,
 };
@@ -101,9 +102,11 @@ fn get_marking_assist(settings: State<'_, SettingsState>) -> Result<bool, ()> {
 fn get_hint(grid: [[i8; 9]; 9], candidates: [[[bool; 10]; 9]; 9]) -> Option<Hint> {
     let state = FullState::new(Grid(grid), candidates);
     let potential_hints = [
-        Pointing::get_hint,
         HiddenSingle::get_hint,
         NakedSingle::get_hint,
+        Pointing::get_hint,
+        Claiming::get_hint,
+        HiddenPair::get_hint,
     ];
     for potential_hint in potential_hints {
         let hint = potential_hint(&state);

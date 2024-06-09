@@ -4,6 +4,7 @@ use sudoku::state::full_state::FullState;
 
 pub mod singles;
 pub mod locked_candidates;
+pub mod hidden_subsets;
 
 #[derive(Serialize)]
 pub struct DirectOption(pub usize, pub usize, pub i8);
