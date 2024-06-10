@@ -121,8 +121,8 @@ fn get_hint(grid: [[i8; 9]; 9], candidates: [[[bool; 10]; 9]; 9]) -> (Option<Hin
     }
 
     let potential_hints = [
-        HiddenSingle::get_hint,
         NakedSingle::get_hint,
+        HiddenSingle::get_hint,
         Pointing::get_hint,
         Claiming::get_hint,
         NakedPair::get_hint,

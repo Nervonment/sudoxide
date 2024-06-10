@@ -105,7 +105,7 @@ export default function Home() {
                   </div>
                 </PopoverTrigger>
                 <PopoverContent>
-                  <p className="text-sm">开启标记辅助后，开局时会标记上所有的候选数字</p>
+                  <p className="text-sm">开启标记辅助后，开局时会自动标记上所有候选数字</p>
                 </PopoverContent>
               </Popover>
               <Switch
@@ -211,10 +211,10 @@ export default function Home() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="absolute z-[-10] left-[-120px] bottom-[-380px] brightness-75">
+      <div className="absolute z-[-10] left-[-120px] bottom-[-380px] opacity-75">
         <SudokuGrid grid={randomPuzzle} />
       </div>
-      <div className="absolute z-[-10] right-[-240px] top-[-320px] brightness-50">
+      <div className="absolute z-[-10] right-[-240px] top-[-320px] opacity-50">
         <SudokuGrid grid={randomPuzzle} />
       </div>
     </div>

@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import SudokuGrid from "@/components/sudoku_grid";
 import { cn, difficultyDesc, hintColor } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/tauri";
-import { Check, HelpCircle, Lightbulb, Loader2, RefreshCcw, SquarePen, Tornado, Trash2, Undo2, X } from "lucide-react";
+import { Check, HelpCircle, Lightbulb, Loader2, Redo, RefreshCcw, SquarePen, Tornado, Trash2, Undo, Undo2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -170,35 +170,43 @@ export default function Start() {
     })
   };
 
+  const undo = useCallback(() => {
+    if (!finished && historyRef.current.length != 0) {
+      futureRef.current.push({
+        grid: grid.map((row) => row.map((cell) => ({ ...cell }))),
+        markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
+      });
+      let { grid: g, markedCandidates: m } = historyRef.current.pop();
+      setGrid(g);
+      setMaxCandidates(getMaxCandidates(g));
+      setMarkedCandidates(m);
+      hideHint();
+    }
+  }, [grid, markedCandidates, finished]);
+
+  const redo = useCallback(() => {
+    if (!finished && futureRef.current.length != 0) {
+      historyRef.current.push({
+        grid: grid.map((row) => row.map((cell) => ({ ...cell }))),
+        markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
+      });
+      let { grid: g, markedCandidates: m } = futureRef.current.pop();
+      setGrid(g);
+      setMaxCandidates(getMaxCandidates(g));
+      setMarkedCandidates(m);
+      hideHint();
+    }
+  }, [grid, markedCandidates, finished]);
+
   const onKeyDown = useCallback((event) => {
     if (!finished && grid && markedCandidates) {
       // 撤销
       if (event.key == 'z') {
-        if (historyRef.current.length != 0) {
-          futureRef.current.push({
-            grid: grid.map((row) => row.map((cell) => ({ ...cell }))),
-            markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
-          });
-          let { grid: g, markedCandidates: m } = historyRef.current.pop();
-          setGrid(g);
-          setMaxCandidates(getMaxCandidates(g));
-          setMarkedCandidates(m);
-          hideHint();
-        }
+        undo();
       }
       // 重做
       else if (event.key == 'x') {
-        if (futureRef.current.length != 0) {
-          historyRef.current.push({
-            grid: grid.map((row) => row.map((cell) => ({ ...cell }))),
-            markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
-          });
-          let { grid: g, markedCandidates: m } = futureRef.current.pop();
-          setGrid(g);
-          setMaxCandidates(getMaxCandidates(g));
-          setMarkedCandidates(m);
-          hideHint();
-        }
+        redo();
       }
       // 填数或标记候选数
       else if (currentCellRef.current) {
@@ -243,7 +251,7 @@ export default function Start() {
         }
       }
     }
-  }, [grid, finished, maxCandidates, markedCandidates, pushHistory, fillGrid]);
+  }, [grid, finished, maxCandidates, markedCandidates, pushHistory, fillGrid, undo, redo]);
 
   useEffect(() => {
     window.addEventListener('keydown', onKeyDown);
@@ -260,7 +268,7 @@ export default function Start() {
   }
 
   const getHintAndShow = () => {
-    if (!finished)
+    if (!finished && grid)
       invoke('get_hint', {
         grid: grid.map((row) => row.map((cell) => cell.value)),
         candidates: maskedCandidates
@@ -357,7 +365,10 @@ export default function Start() {
                         <p>
                           {hint.description.map((seg, idx) => (
                             <span
-                              style={{ color: hintColor[seg.color] }}
+                              className={cn(
+                                `text-${seg.color}`,
+                                seg.color !== "TextDefault" && "font-bold"
+                              )}
                               key={idx}
                             >
                               {seg.text}
@@ -378,6 +389,7 @@ export default function Start() {
                                     variant="default"
                                     onClick={() => {
                                       setUsedAssist(true);
+                                      pushHistory(grid, markedCandidates);
                                       setMarkedCandidates(getMaxCandidates(grid));
                                       setShowingHint(false);
                                     }}
@@ -434,19 +446,45 @@ export default function Start() {
 
       <div className="absolute right-0 flex flex-col gap-1">
         <TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="link" onClick={showingHint && hint ? applyHintOption : getHintAndShow}>
-                  {showingHint && hint ? <SquarePen /> : <Lightbulb />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{showingHint && hint ? "执行" : "提示"}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="link" onClick={showingHint && hint ? applyHintOption : getHintAndShow}>
+                {showingHint && hint ? <SquarePen /> : <Lightbulb />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{showingHint && hint ? "执行" : "提示"}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="link" onClick={undo}>
+                <Undo />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>撤销(Z)</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="link" onClick={redo}>
+                <Redo />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>重做(X)</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="link" onClick={newPuzzle}>
@@ -480,7 +518,7 @@ export default function Start() {
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>退出</p>
+              <p>返回首页</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
