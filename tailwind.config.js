@@ -7,6 +7,22 @@ module.exports = {
     './app/**/*.{js,jsx}',
     './src/**/*.{js,jsx}',
   ],
+  safelist: [
+    "text-TextDefault",
+    "text-House1",
+    "text-House2",
+    "text-Cell1",
+    "text-NumToFill",
+    "text-CandidateToReserve",
+    "text-CandidateToRemove",
+    "border-TextDefault",
+    "border-House1",
+    "border-House2",
+    "border-Cell1",
+    "border-NumToFill",
+    "border-CandidateToReserve",
+    "border-CandidateToRemove",
+  ],
   prefix: "",
   theme: {
     container: {
@@ -51,6 +67,14 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+
+        TextDefault: "hsl(var(--foreground))",
+        House1: "#ffcf33",
+        House2: "#f67b46",
+        Cell1: "#ff4c8e",
+        NumToFill: "#ff4c8e",
+        CandidateToReserve: "#7cbd14",
+        CandidateToRemove: "hsl(var(--destructive))"
       },
       borderRadius: {
         lg: "var(--radius)",
