@@ -19,10 +19,13 @@ function SudokuCell({ cell, candidatesOfCell, r, c, handleMouseEnter, handleMous
             : candidatesOfCell ? <div className="grid grid-cols-3">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                 <div
-                  className="h-[20px] w-[20px] text-xs flex items-center justify-center transition-colors duration-500"
+                  className={cn(
+                    "h-[20px] w-[20px] text-sm flex items-center justify-center transition-colors duration-500",
+                    !candidatesOfCell[num].highlight && "opacity-55"
+                  )}
                   style={{
                     color: candidatesOfCell[num].isCandidate ?
-                      (candidatesOfCell[num].highlight ? candidatesOfCell[num].color : "var(--primary)")
+                      (candidatesOfCell[num].highlight ? candidatesOfCell[num].color : "hsl(var(--muted-foreground))")
                       : "transparent"
                   }}
                   key={num}

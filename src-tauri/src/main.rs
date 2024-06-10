@@ -4,6 +4,7 @@
 use app::hint::{
     hidden_subsets::HiddenPair,
     locked_candidates::{Claiming, Pointing},
+    naked_subsets::NakedPair,
     singles::{HiddenSingle, NakedSingle},
     GetHint, Hint,
 };
@@ -15,6 +16,7 @@ use sudoku::{
         random_sudoku_puzzle_hard, random_sudoku_puzzle_normal, random_sudoku_puzzle_ultimate,
     },
     judge::judge_sudoku as judge,
+    solver::{advanced::AdvancedSolver, Solver},
     state::full_state::FullState,
     Grid,
 };
@@ -98,21 +100,39 @@ fn get_marking_assist(settings: State<'_, SettingsState>) -> Result<bool, ()> {
     Ok(settings.0.lock().unwrap().marking_assist)
 }
 
+#[derive(Serialize)]
+pub enum GetHintResult {
+    Success,
+    WrongFill,
+    WrongMark,
+}
+
 #[tauri::command]
-fn get_hint(grid: [[i8; 9]; 9], candidates: [[[bool; 10]; 9]; 9]) -> Option<Hint> {
+fn get_hint(grid: [[i8; 9]; 9], candidates: [[[bool; 10]; 9]; 9]) -> (Option<Hint>, GetHintResult) {
+    let mut solver: AdvancedSolver<FullState> = AdvancedSolver::from(Grid(grid));
+    if !solver.have_unique_solution() {
+        return (None, GetHintResult::WrongFill);
+    }
+
     let state = FullState::new(Grid(grid), candidates);
+    let mut solver: AdvancedSolver<FullState> = AdvancedSolver::from(state.clone());
+    if !solver.have_unique_solution() {
+        return (None, GetHintResult::WrongMark);
+    }
+
     let potential_hints = [
         HiddenSingle::get_hint,
         NakedSingle::get_hint,
         Pointing::get_hint,
         Claiming::get_hint,
+        NakedPair::get_hint,
         HiddenPair::get_hint,
     ];
     for potential_hint in potential_hints {
         let hint = potential_hint(&state);
         if hint.is_some() {
-            return hint;
+            return (hint, GetHintResult::Success);
         }
     }
-    None
+    (None, GetHintResult::Success)
 }

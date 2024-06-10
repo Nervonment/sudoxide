@@ -1,7 +1,7 @@
 use sudoku::{
     state::full_state::FullState,
     techniques::{
-        hidden_subsets::{HiddenPairBlock, HiddenPairColumn, HiddenPairInfo, HiddenPairRow},
+        naked_subsets::{NakedPairBlock, NakedPairColumn, NakedPairInfo, NakedPairRow},
         Technique,
     },
 };
@@ -11,8 +11,8 @@ use super::{
     ReducingCandidatesOption, Segment,
 };
 
-fn hidden_pair_to_hint(
-    info: HiddenPairInfo,
+fn naked_pair_to_hint(
+    info: NakedPairInfo,
     option: sudoku::techniques::ReducingCandidatesOption,
 ) -> Hint {
     let mut visual_elements = vec![
@@ -21,45 +21,45 @@ fn hidden_pair_to_hint(
             color: Color::House1,
         },
         Element {
-            kind: ElementType::Candidate(info.rem_cell_1.0, info.rem_cell_1.1, info.nums[0]),
-            color: Color::CandidateToReserve,
-        },
-        Element {
-            kind: ElementType::Candidate(info.rem_cell_1.0, info.rem_cell_1.1, info.nums[1]),
-            color: Color::CandidateToReserve,
-        },
-        Element {
-            kind: ElementType::Candidate(info.rem_cell_2.0, info.rem_cell_2.1, info.nums[0]),
-            color: Color::CandidateToReserve,
-        },
-        Element {
-            kind: ElementType::Candidate(info.rem_cell_2.0, info.rem_cell_2.1, info.nums[1]),
-            color: Color::CandidateToReserve,
-        },
-        Element {
-            kind: ElementType::Cell(info.rem_cell_1.0, info.rem_cell_1.1),
+            kind: ElementType::Cell(info.cells[0].0, info.cells[0].1),
             color: Color::Cell1,
         },
         Element {
-            kind: ElementType::Cell(info.rem_cell_2.0, info.rem_cell_2.1),
+            kind: ElementType::Cell(info.cells[1].0, info.cells[1].1),
             color: Color::Cell1,
+        },
+        Element {
+            kind: ElementType::Candidate(info.cells[0].0, info.cells[0].1, info.rem_num_1),
+            color: Color::CandidateToReserve,
+        },
+        Element {
+            kind: ElementType::Candidate(info.cells[0].0, info.cells[0].1, info.rem_num_2),
+            color: Color::CandidateToReserve,
+        },
+        Element {
+            kind: ElementType::Candidate(info.cells[1].0, info.cells[1].1, info.rem_num_1),
+            color: Color::CandidateToReserve,
+        },
+        Element {
+            kind: ElementType::Candidate(info.cells[1].0, info.cells[1].1, info.rem_num_2),
+            color: Color::CandidateToReserve,
         },
     ];
-    for num in info.rem_nums_1 {
+    for cell in info.rem_cells_1 {
         visual_elements.push(Element {
-            kind: ElementType::Candidate(info.rem_cell_1.0, info.rem_cell_1.1, num),
+            kind: ElementType::Candidate(cell.0, cell.1, info.rem_num_1),
             color: Color::CandidateToRemove,
         });
     }
-    for num in info.rem_nums_2 {
+    for cell in info.rem_cells_2 {
         visual_elements.push(Element {
-            kind: ElementType::Candidate(info.rem_cell_2.0, info.rem_cell_2.1, num),
+            kind: ElementType::Candidate(cell.0, cell.1, info.rem_num_2),
             color: Color::CandidateToRemove,
         });
     }
 
     Hint {
-        name: "Hidden Pair".into(),
+        name: "Naked Pair".into(),
         description: vec![
             Segment {
                 text: house_to_string(info.house),
@@ -70,7 +70,15 @@ fn hidden_pair_to_hint(
                 color: Color::TextDefault,
             },
             Segment {
-                text: info.nums[0].to_string(),
+                text: "这两格".into(),
+                color: Color::Cell1,
+            },
+            Segment {
+                text: "只能填".into(),
+                color: Color::TextDefault,
+            },
+            Segment {
+                text: info.rem_num_1.to_string(),
                 color: Color::CandidateToReserve,
             },
             Segment {
@@ -78,31 +86,15 @@ fn hidden_pair_to_hint(
                 color: Color::TextDefault,
             },
             Segment {
-                text: info.nums[1].to_string(),
+                text: info.rem_num_2.to_string(),
                 color: Color::CandidateToReserve,
-            },
-            Segment {
-                text: "只能填在".into(),
-                color: Color::TextDefault,
-            },
-            Segment {
-                text: "这两格".into(),
-                color: Color::Cell1,
             },
             Segment {
                 text: "，所以".into(),
                 color: Color::TextDefault,
             },
             Segment {
-                text: "这两格".into(),
-                color: Color::Cell1,
-            },
-            Segment {
-                text: "也只可能填".into(),
-                color: Color::TextDefault,
-            },
-            Segment {
-                text: info.nums[0].to_string(),
+                text: info.rem_num_1.to_string(),
                 color: Color::CandidateToReserve,
             },
             Segment {
@@ -110,19 +102,35 @@ fn hidden_pair_to_hint(
                 color: Color::TextDefault,
             },
             Segment {
-                text: info.nums[1].to_string(),
+                text: info.rem_num_2.to_string(),
                 color: Color::CandidateToReserve,
             },
             Segment {
-                text: "，".into(),
+                text: "也只可能填在".into(),
                 color: Color::TextDefault,
             },
             Segment {
-                text: "其他的候选数字".into(),
+                text: "这两格".into(),
+                color: Color::Cell1,
+            },
+            Segment {
+                text: "，进而可以将".into(),
+                color: Color::TextDefault,
+            },
+            Segment {
+                text: info.rem_num_1.to_string(),
                 color: Color::CandidateToRemove,
             },
             Segment {
-                text: "可以删去。".into(),
+                text: "和".into(),
+                color: Color::TextDefault,
+            },
+            Segment {
+                text: info.rem_num_2.to_string(),
+                color: Color::CandidateToRemove,
+            },
+            Segment {
+                text: "从其他的格子的候选数字中删去。".into(),
                 color: Color::TextDefault,
             },
         ],
@@ -131,15 +139,15 @@ fn hidden_pair_to_hint(
     }
 }
 
-pub struct HiddenPair;
-impl GetHint for HiddenPair {
+pub struct NakedPair;
+impl GetHint for NakedPair {
     fn get_hint(state: &FullState) -> Option<Hint> {
-        let res = HiddenPairBlock::check(state);
+        let res = NakedPairBlock::check(state);
         if res.0.is_some() {
             return Some(
-                hidden_pair_to_hint(
+                naked_pair_to_hint(
                     res.0.clone().unwrap(),
-                    <HiddenPairBlock as Into<
+                    <NakedPairBlock as Into<
                         Option<sudoku::techniques::ReducingCandidatesOption>,
                     >>::into(res)
                     .unwrap()
@@ -147,18 +155,23 @@ impl GetHint for HiddenPair {
                 ),
             );
         }
-        let res = HiddenPairRow::check(state);
+        let res = NakedPairRow::check(state);
         if res.0.is_some() {
-            return Some(hidden_pair_to_hint(res.0.clone().unwrap(),
-            <HiddenPairRow as Into<Option<sudoku::techniques::ReducingCandidatesOption>>>::into(res).unwrap().into()
-        ));
+            return Some(naked_pair_to_hint(
+                res.0.clone().unwrap(),
+                <NakedPairRow as Into<Option<sudoku::techniques::ReducingCandidatesOption>>>::into(
+                    res,
+                )
+                .unwrap()
+                .into(),
+            ));
         }
-        let res = HiddenPairColumn::check(state);
+        let res = NakedPairColumn::check(state);
         if res.0.is_some() {
             return Some(
-                hidden_pair_to_hint(
+                naked_pair_to_hint(
                     res.0.clone().unwrap(),
-                    <HiddenPairColumn as Into<
+                    <NakedPairColumn as Into<
                         Option<sudoku::techniques::ReducingCandidatesOption>,
                     >>::into(res)
                     .unwrap()

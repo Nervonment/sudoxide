@@ -2,9 +2,9 @@
 
 import { Label } from "@/components/ui/label";
 import SudokuGrid from "@/components/sudoku_grid";
-import { difficultyDesc, hintColor } from "@/lib/utils";
+import { cn, difficultyDesc, hintColor } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/tauri";
-import { HelpCircle, Lightbulb, Loader2, RefreshCcw, SquarePen, Tornado, Trash2, Undo2 } from "lucide-react";
+import { Check, HelpCircle, Lightbulb, Loader2, RefreshCcw, SquarePen, Tornado, Trash2, Undo2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -22,9 +22,13 @@ export default function Start() {
   const colContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
   const blkContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
   const [hint, setHint] = useState(null);
+  const [noHintReason, setNoHintReason] = useState("");
   const [showingHint, setShowingHint] = useState(false);
   const [time, setTime] = useState(0);
   const [finished, setFinished] = useState(false);
+
+  const [usedHint, setUsedHint] = useState(false);
+  const [usedAssist, setUsedAssist] = useState(false);
 
   const markingAssistRef = useRef(false); // 是否开启标记辅助
 
@@ -52,7 +56,7 @@ export default function Start() {
 
   useEffect(() => {
     invoke('get_difficulty').then((difficulty) => setDifficulty(difficulty));
-    invoke('get_marking_assist').then((markingAssist) => markingAssistRef.current = markingAssist);
+    invoke('get_marking_assist').then((markingAssist) => { markingAssistRef.current = markingAssist; setUsedAssist(markingAssist); });
   }, []);
 
   const init = useCallback((grid) => {
@@ -65,6 +69,8 @@ export default function Start() {
     }
     setTime(0);
     hideHint();
+    setUsedHint(false);
+    setUsedAssist(markingAssistRef.current);
     historyRef.current = [];
     futureRef.current = [];
   }, []);
@@ -254,14 +260,16 @@ export default function Start() {
   }
 
   const getHintAndShow = () => {
-    invoke('get_hint', {
-      grid: grid.map((row) => row.map((cell) => cell.value)),
-      candidates: maskedCandidates
-    }).then((hint) => {
-      setHint(hint);
-      console.log(hint);
-      setShowingHint(true);
-    });
+    if (!finished)
+      invoke('get_hint', {
+        grid: grid.map((row) => row.map((cell) => cell.value)),
+        candidates: maskedCandidates
+      }).then((hint) => {
+        setUsedHint(true);
+        setHint(hint[0]);
+        setNoHintReason(hint[1]);
+        setShowingHint(true);
+      });
   }
 
   const hideHint = () => {
@@ -287,7 +295,7 @@ export default function Start() {
   const router = useRouter();
 
   return (
-    <div className="h-screen w-screen p-8 flex items-center justify-stretch">
+    <div className="h-screen w-screen p-8 pr-12 flex items-center justify-stretch gap-4">
       {
         grid && maskedCandidates ?
           <>
@@ -298,73 +306,123 @@ export default function Start() {
               handleMouseLeave={handleMouseLeave}
               visualElements={hint ? hint.visual_elements : null}
             />
-            <div className="flex-1 flex flex-col gap-6 items-center">
-              <div className="flex flex-col gap-1 items-center w-full">
-                <div className="relative text-4xl font-bold">
-                  {difficultyDesc[difficulty]}
+            <div className="flex-1 relative h-full">
+
+              <div className={cn(
+                "absolute w-full flex flex-col gap-6 items-center transition-[top]",
+                showingHint ? "top-16" : "top-[calc(50%-122px)]"
+              )}>
+                <div className="flex flex-col gap-1 items-center w-full">
+                  <div className="relative text-4xl font-bold">
+                    {difficultyDesc[difficulty]}
+                  </div>
+                  <Label className="text-muted-foreground">难度</Label>
+                </div>
+                <div className="flex flex-col gap-1 items-center w-full">
+                  <p className="text-4xl font-bold">{timeMin}:{timeSec}</p>
+                  <Label className="text-muted-foreground">用时</Label>
+                </div>
+                <div className="flex flex-col gap-1 items-center w-full h-32 z-20">
                   {
-                    markingAssistRef.current ?
-                      <div className="absolute top-[-10px] right-[-64px] text-xs">(已开启辅助)</div> : <></>
+                    !finished ?
+                      <>
+                        <p className="text-4xl font-bold">{rest}</p>
+                        <Label className="text-muted-foreground">剩余</Label>
+                      </> :
+                      <>
+                        <p className="text-4xl font-bold mb-1">已完成!</p>
+                        <p className="text-muted-foreground text-sm">
+                          {
+                            usedAssist ? <span>已使用辅助 </span> : <></>
+                          }
+                          {
+                            usedHint ? <span>已使用提示</span> : <></>
+                          }
+                        </p>
+                        <Button onClick={newPuzzle}>下一个</Button>
+                      </>
                   }
                 </div>
-                <Label className="text-muted-foreground">难度</Label>
               </div>
-              <div className="flex flex-col gap-1 items-center w-full">
-                <p className="text-4xl font-bold">{timeMin}:{timeSec}</p>
-                <Label className="text-muted-foreground">用时</Label>
-              </div>
-              <div className="flex flex-col gap-1 items-center w-full h-20">
+
+              <div className={cn(
+                "absolute top-[calc(244px+24px+(100%-244px-24px-200px-64px)/2)] h-[200px] w-full p-6 flex items-center justify-center transition-opacity duration-500",
+                showingHint ? "opacity-100" : "opacity-0"
+              )}>
                 {
-                  !finished ?
-                    <>
-                      <p className="text-4xl font-bold">{rest}</p>
-                      <Label className="text-muted-foreground">剩余</Label>
-                    </> :
-                    <>
-                      <p className="text-4xl font-bold mb-1">已完成!</p>
-                      <Button onClick={newPuzzle}>下一个</Button>
-                    </>
+                  showingHint ?
+                    (hint ?
+                      <div className="w-full flex flex-col items-center gap-2">
+                        <Label className="text-muted-foreground">{hint.name}</Label>
+                        <p>
+                          {hint.description.map((seg, idx) => (
+                            <span
+                              style={{ color: hintColor[seg.color] }}
+                              key={idx}
+                            >
+                              {seg.text}
+                            </span>
+                          ))}
+                        </p>
+                      </div>
+                      : (
+                        noHintReason == "Success" ?
+                          <p>无可用提示</p> :
+                          noHintReason == "WrongFill" ?
+                            <p>您的填数有误，请检查后重试</p> :
+                            noHintReason == "WrongMark" ?
+                              <div className="flex flex-col items-center gap-2">
+                                <p>您未标记候选数或标记有误。要使用提示，必须正确标记候选数。是否为您自动标记上所有候选数？</p>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="default"
+                                    onClick={() => {
+                                      setUsedAssist(true);
+                                      setMarkedCandidates(getMaxCandidates(grid));
+                                      setShowingHint(false);
+                                    }}
+                                  >
+                                    <Check />
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    onClick={() => {
+                                      setShowingHint(false);
+                                    }}
+                                  >
+                                    <X />
+                                  </Button>
+                                </div>
+                              </div>
+                              : <></>
+                      )
+                    )
+                    : <></>
                 }
               </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <div className="text-muted-foreground flex items-center gap-1 cursor-pointer">
-                    <Label >操作说明</Label>
-                    <HelpCircle size={16} />
-                  </div>
-                </PopoverTrigger>
-                <PopoverContent>
-                  <div className="w-96 text-muted-foreground text-sm">
-                    <p>将光标移动到格子上，即可操作对应格子。</p>
-                    <p><span className="font-bold">数字键 1~9</span>：填数</p>
-                    <p><span className="font-bold">空格</span>：清除当前格</p>
-                    <p><span className="font-bold">Shift + 数字键 1~9</span>：标记/删除候选数</p>
-                    <p><span className="font-bold">Shift + 空格</span>：删除当前格所有候选数</p>
-                    <p><span className="font-bold">Z</span>：撤销</p>
-                    <p><span className="font-bold">X</span>：重做</p>
-                  </div>
-                </PopoverContent>
-              </Popover>
 
-              {
-                showingHint ?
-                  (hint ?
-                    <div className="flex flex-col items-center gap-2">
-                      <Label>{hint.name}</Label>
-                      <p>
-                        {hint.description.map((seg, idx) => (
-                          <span
-                            style={{ color: hintColor[seg.color] }}
-                            key={idx}
-                          >
-                            {seg.text}
-                          </span>
-                        ))}
-                      </p>
+              <div className="absolute bottom-6 w-full flex justify-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <div className="text-muted-foreground flex items-center gap-1 cursor-pointer">
+                      <Label >操作说明</Label>
+                      <HelpCircle size={16} />
                     </div>
-                    : <p>无可用提示</p>)
-                  : <></>
-              }
+                  </PopoverTrigger>
+                  <PopoverContent>
+                    <div className="w-96 text-muted-foreground text-sm">
+                      <p>将光标移动到格子上，即可操作对应格子。</p>
+                      <p><span className="font-bold">数字键 1~9</span>：填数</p>
+                      <p><span className="font-bold">空格</span>：清除当前格</p>
+                      <p><span className="font-bold">Shift + 数字键 1~9</span>：标记/删除候选数</p>
+                      <p><span className="font-bold">Shift + 空格</span>：删除当前格所有候选数</p>
+                      <p><span className="font-bold">Z</span>：撤销</p>
+                      <p><span className="font-bold">X</span>：重做</p>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
             </div>
           </>
           :
@@ -427,6 +485,6 @@ export default function Start() {
           </Tooltip>
         </TooltipProvider>
       </div>
-    </div>
+    </div >
   )
 }
