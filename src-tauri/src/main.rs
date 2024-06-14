@@ -1,13 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use app::hint::{
-    hidden_subsets::HiddenPair,
-    locked_candidates::{Claiming, Pointing},
-    naked_subsets::NakedPair,
-    singles::{HiddenSingle, NakedSingle},
-    GetHint, Hint,
-};
+use app::hint::{GetHint, Hint};
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 use sudoku::{
@@ -18,6 +12,12 @@ use sudoku::{
     judge::judge_sudoku as judge,
     solver::{advanced::AdvancedSolver, Solver},
     state::full_state::FullState,
+    techniques::{
+        hidden_subsets::HiddenPair,
+        locked_candidates::{Claiming, Pointing},
+        naked_subsets::{NakedPair, NakedSubset},
+        singles::{HiddenSingle, NakedSingle},
+    },
     Grid,
 };
 use tauri::State;
@@ -32,6 +32,8 @@ fn main() {
             get_difficulty,
             set_marking_assist,
             get_marking_assist,
+            set_begin_with_marks,
+            get_begin_with_marks,
             get_hint
         ])
         .run(tauri::generate_context!())
@@ -42,13 +44,15 @@ fn main() {
 struct Settings {
     difficulty: u8,
     marking_assist: bool,
+    begin_with_marks: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            difficulty: 2,
-            marking_assist: false,
+            difficulty: 1,
+            marking_assist: true,
+            begin_with_marks: false,
         }
     }
 }
@@ -100,6 +104,16 @@ fn get_marking_assist(settings: State<'_, SettingsState>) -> Result<bool, ()> {
     Ok(settings.0.lock().unwrap().marking_assist)
 }
 
+#[tauri::command]
+fn set_begin_with_marks(begin_with_marks: bool, settings: State<'_, SettingsState>) {
+    settings.0.lock().unwrap().begin_with_marks = begin_with_marks;
+}
+
+#[tauri::command]
+fn get_begin_with_marks(settings: State<'_, SettingsState>) -> Result<bool, ()> {
+    Ok(settings.0.lock().unwrap().begin_with_marks)
+}
+
 #[derive(Serialize)]
 pub enum GetHintResult {
     Success,
@@ -120,19 +134,22 @@ fn get_hint(grid: [[i8; 9]; 9], candidates: [[[bool; 10]; 9]; 9]) -> (Option<Hin
         return (None, GetHintResult::WrongMark);
     }
 
-    let potential_hints = [
-        NakedSingle::get_hint,
-        HiddenSingle::get_hint,
-        Pointing::get_hint,
-        Claiming::get_hint,
-        NakedPair::get_hint,
-        HiddenPair::get_hint,
+    let techniques: [&mut dyn GetHint; 7] = [
+        &mut NakedSingle::default(),
+        &mut HiddenSingle::default(),
+        &mut Pointing::default(),
+        &mut Claiming::default(),
+        &mut NakedPair::default(),
+        &mut HiddenPair::default(),
+        &mut NakedSubset::default(),
     ];
-    for potential_hint in potential_hints {
-        let hint = potential_hint(&state);
-        if hint.is_some() {
-            return (hint, GetHintResult::Success);
+
+    for technique in techniques {
+        technique.analyze(&state);
+        if technique.appliable() {
+            return (technique.get_hint(), GetHintResult::Success);
         }
     }
+
     (None, GetHintResult::Success)
 }

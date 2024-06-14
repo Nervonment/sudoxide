@@ -1,6 +1,6 @@
 use serde::Serialize;
 use sudoku::state::full_state::FullState;
-// use sudoku::techniques::{DirectOption, ReducingCandidatesOption};
+use sudoku::techniques::{DirectOption, House, ReducingCandidatesOption, Technique};
 
 pub mod singles;
 pub mod locked_candidates;
@@ -8,24 +8,18 @@ pub mod hidden_subsets;
 pub mod naked_subsets;
 
 #[derive(Serialize)]
-pub struct DirectOption(pub usize, pub usize, pub i8);
-impl From<sudoku::techniques::DirectOption> for DirectOption {
-    fn from(value: sudoku::techniques::DirectOption) -> Self {
-        Self(value.0, value.1, value.2)
-    }
-}
+#[serde(remote = "DirectOption")]
+pub struct DirectOptionDef(pub usize, pub usize, pub i8);
 
 #[derive(Serialize)]
-pub struct ReducingCandidatesOption(pub Vec<(Vec<(usize, usize)>, Vec<i8>)>);
-impl From<sudoku::techniques::ReducingCandidatesOption> for ReducingCandidatesOption {
-    fn from(value: sudoku::techniques::ReducingCandidatesOption) -> Self {
-        Self(value.0)
-    }
-}
+#[serde(remote = "ReducingCandidatesOption")]
+pub struct ReducingCandidatesOptionDef(pub Vec<(Vec<(usize, usize)>, Vec<i8>)>);
 
 #[derive(Serialize)]
 pub enum HintOption {
+    #[serde(with = "DirectOptionDef")]
     Direct(DirectOption),
+    #[serde(with = "ReducingCandidatesOptionDef")]
     ReducingCandidates(ReducingCandidatesOption),
 }
 
@@ -37,8 +31,8 @@ pub struct Hint {
     pub option: HintOption,
 }
 
-pub trait GetHint {
-    fn get_hint(state: &FullState) -> Option<Hint>;
+pub trait GetHint: Technique<FullState> {
+    fn get_hint(&self) -> Option<Hint>;
 }
 
 #[derive(Serialize)]
@@ -66,30 +60,24 @@ pub enum Color {
 
 #[derive(Serialize)]
 pub enum ElementType {
+    #[serde(with = "HouseDef")]
     House(House),
     Cell(usize, usize),
     Candidate(usize, usize, i8),
 }
 
 #[derive(Serialize)]
-pub enum House {
+#[serde(remote = "House")]
+pub enum HouseDef {
     Row(usize),
     Column(usize),
     Block(usize),
 }
 
-fn house_to_string(house: sudoku::techniques::House) -> String {
+fn house_to_string(house: House) -> String {
     match house {
         sudoku::techniques::House::Row(idx) => format!("第{}行", idx + 1),
         sudoku::techniques::House::Column(idx) => format!("第{}列", idx + 1),
         sudoku::techniques::House::Block(idx) => format!("第{}宫", idx + 1),
-    }
-}
-
-fn house_to_house(house: sudoku::techniques::House) -> House {
-    match house {
-        sudoku::techniques::House::Row(idx) => House::Row(idx),
-        sudoku::techniques::House::Column(idx) => House::Column(idx),
-        sudoku::techniques::House::Block(idx) => House::Block(idx),
     }
 }

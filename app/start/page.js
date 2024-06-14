@@ -31,6 +31,7 @@ export default function Start() {
   const [usedAssist, setUsedAssist] = useState(false);
 
   const markingAssistRef = useRef(false); // 是否开启标记辅助
+  const beginWithMarksRef = useRef(false); // 是否开启开局标记
 
   const historyRef = useRef([]);
   const futureRef = useRef([]);
@@ -57,13 +58,15 @@ export default function Start() {
   useEffect(() => {
     invoke('get_difficulty').then((difficulty) => setDifficulty(difficulty));
     invoke('get_marking_assist').then((markingAssist) => { markingAssistRef.current = markingAssist; setUsedAssist(markingAssist); });
+    invoke('get_begin_with_marks').then((beginWithMarks) => { beginWithMarksRef.current = beginWithMarks; });
   }, []);
 
   const init = useCallback((grid) => {
     setGrid(grid);
     setMaxCandidates(getMaxCandidates(grid));
-    if (markingAssistRef.current) {
-      setMarkedCandidates(Array.from({ length: 9 }, (v) => Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => true))));
+    if (beginWithMarksRef.current) {
+      setMarkedCandidates(getMaxCandidates(grid));
+      // setMarkedCandidates(Array.from({ length: 9 }, (v) => Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => true))));
     } else {
       setMarkedCandidates(Array.from({ length: 9 }, (v) => Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false))));
     }
@@ -226,8 +229,9 @@ export default function Start() {
           }
           // 标记候选数
           else {
-            // 只能标记 maxCandidates[r][c] 中的数字
-            if (grid[r][c].value == 0 && (maxCandidates[r][c][num] || event.key == ' ')) {
+            // 没有开启标记辅助时，可以标记任意数字
+            // 开启时，只能标记 maxCandidates[r][c] 中的数字
+            if (grid[r][c].value == 0 && (!markingAssistRef.current || maxCandidates[r][c][num] || event.key == ' ')) {
               if (event.key == ' ') { // 按空格键 
                 if (!markedCandidates[r][c].every((is, num) => num == 0 || !is)) {
                   pushHistory(grid, markedCandidates);
@@ -271,7 +275,7 @@ export default function Start() {
     if (!finished && grid)
       invoke('get_hint', {
         grid: grid.map((row) => row.map((cell) => cell.value)),
-        candidates: maskedCandidates
+        candidates: markingAssistRef.current ? maskedCandidates : markedCandidates
       }).then((hint) => {
         setUsedHint(true);
         setHint(hint[0]);
@@ -309,7 +313,7 @@ export default function Start() {
           <>
             <SudokuGrid
               grid={grid}
-              candidates={maskedCandidates}
+              candidates={markingAssistRef.current ? maskedCandidates : markedCandidates}
               handleMouseEnter={handleMouseEnter}
               handleMouseLeave={handleMouseLeave}
               visualElements={hint ? hint.visual_elements : null}
