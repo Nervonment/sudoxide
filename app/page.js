@@ -25,6 +25,7 @@ import { useEffect, useState } from "react";
 export default function Home() {
   const [difficulty, setDifficulty] = useState(2);
   const [markingAssist, setMarkingAssist] = useState(false);
+  const [beginWithMarks, setBeginWithMarks] = useState(false);
   const [appVersion, setAppversion] = useState("");
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [updateManifest, setUpdateManifest] = useState({});
@@ -34,6 +35,7 @@ export default function Home() {
   useEffect(() => {
     invoke('get_difficulty').then((difficulty) => setDifficulty(difficulty));
     invoke('get_marking_assist').then((markingAssist) => setMarkingAssist(markingAssist));
+    invoke('get_begin_with_marks').then((beginWithMarks) => setBeginWithMarks(beginWithMarks));
   }, []);
 
   useEffect(() => {
@@ -105,7 +107,7 @@ export default function Home() {
                   </div>
                 </PopoverTrigger>
                 <PopoverContent>
-                  <p className="text-sm">开启标记辅助后，开局时会自动标记上所有候选数字</p>
+                  <p className="text-sm">开启标记辅助后，每个格子中的候选数会自动更新</p>
                 </PopoverContent>
               </Popover>
               <Switch
@@ -113,6 +115,25 @@ export default function Home() {
                 onCheckedChange={(checked) => {
                   setMarkingAssist(checked);
                   invoke('set_marking_assist', { markingAssist: checked });
+                }}
+              />
+            </div>
+            <div className="flex justify-between items-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <div className="flex items-center gap-1 cursor-pointer">
+                    <Label className="font-bold flex items-center gap-1">开局标记所有候选数<HelpCircle size={16} /></Label>
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent>
+                  <p className="text-sm">开启后，开局时会自动标记上所有候选数字</p>
+                </PopoverContent>
+              </Popover>
+              <Switch
+                checked={beginWithMarks}
+                onCheckedChange={(checked) => {
+                  setBeginWithMarks(checked);
+                  invoke('set_begin_with_marks', { beginWithMarks: checked });
                 }}
               />
             </div>

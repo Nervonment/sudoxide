@@ -1,23 +1,27 @@
-use sudoku::{state::full_state::FullState, techniques::Technique, utils::coord_2_block};
-
-use super::{
-    house_to_house, house_to_string, Color, Element, ElementType, GetHint, Hint, HintOption,
-    ReducingCandidatesOption, Segment,
+use sudoku::{
+    state::full_state::FullState,
+    techniques::{
+        locked_candidates::{Claiming, Pointing},
+        ReducingCandidates, Technique,
+    },
+    utils::coord_2_block,
 };
 
-pub struct Pointing;
+use super::{house_to_string, Color, Element, ElementType, GetHint, Hint, HintOption, Segment};
+
 impl GetHint for Pointing {
-    fn get_hint(state: &FullState) -> Option<Hint> {
-        let res = sudoku::techniques::locked_candidates::Pointing::check(state);
-        if res.0.is_some() {
-            let info = res.0.clone().unwrap();
+    fn get_hint(&self) -> Option<Hint> {
+        if <Self as Technique<FullState>>::appliable(&self) {
+            let info = self.0.clone().unwrap();
+            let option = <Self as ReducingCandidates<FullState>>::option(&self).unwrap();
+
             let mut visual_elements = vec![
                 Element {
                     kind: ElementType::House(super::House::Block(info.block)),
                     color: Color::House1,
                 },
                 Element {
-                    kind: ElementType::House(house_to_house(info.rem_house)),
+                    kind: ElementType::House(info.rem_house),
                     color: Color::House2,
                 },
             ];
@@ -90,32 +94,27 @@ impl GetHint for Pointing {
                         color: Color::TextDefault,
                     },
                 ],
-                visual_elements: visual_elements,
-                option: HintOption::ReducingCandidates(ReducingCandidatesOption::from(
-                    <sudoku::techniques::locked_candidates::Pointing as Into<
-                        Option<sudoku::techniques::ReducingCandidatesOption>,
-                    >>::into(res)
-                    .unwrap(),
-                )),
+                visual_elements,
+                option: HintOption::ReducingCandidates(option),
             });
         }
         None
     }
 }
 
-pub struct Claiming;
 impl GetHint for Claiming {
-    fn get_hint(state: &FullState) -> Option<Hint> {
-        let res = sudoku::techniques::locked_candidates::Claiming::check(state);
-        if res.0.is_some() {
-            let info = res.0.clone().unwrap();
+    fn get_hint(&self) -> Option<Hint> {
+        if <Self as Technique<FullState>>::appliable(&self) {
+            let info = self.0.clone().unwrap();
+            let option = <Self as ReducingCandidates<FullState>>::option(&self).unwrap();
+
             let mut visual_elements = vec![
                 Element {
                     kind: ElementType::House(super::House::Block(info.rem_block)),
                     color: Color::House2,
                 },
                 Element {
-                    kind: ElementType::House(house_to_house(info.house)),
+                    kind: ElementType::House(info.house),
                     color: Color::House1,
                 },
             ];
@@ -195,13 +194,8 @@ impl GetHint for Claiming {
                         color: Color::TextDefault,
                     },
                 ],
-                visual_elements: visual_elements,
-                option: HintOption::ReducingCandidates(ReducingCandidatesOption::from(
-                    <sudoku::techniques::locked_candidates::Claiming as Into<
-                        Option<sudoku::techniques::ReducingCandidatesOption>,
-                    >>::into(res)
-                    .unwrap(),
-                )),
+                visual_elements,
+                option: HintOption::ReducingCandidates(option),
             });
         }
         None
