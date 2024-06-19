@@ -2,25 +2,32 @@
 
 import { Label } from "@/components/ui/label";
 import SudokuGrid from "@/components/sudoku_grid";
-import { cn, difficultyDesc, hintColor } from "@/lib/utils";
+import { cn, difficultyDesc } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/tauri";
 import { Check, HelpCircle, Lightbulb, Loader2, Redo, RefreshCcw, SquarePen, Tornado, Trash2, Undo, Undo2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useReducer, useRef, useState } from "react"
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRouter } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import gridReducer from "@/lib/gridReducer";
 
 export default function Start() {
-  const [grid, setGrid] = useState();
-  const currentCellRef = useRef();
+  // const [grid, setGrid] = useState();
+  const [grid, dispatchGrid] = useReducer(gridReducer, null);
+
+
+
+
   const [maxCandidates, setMaxCandidates] = useState([]); // 当前局面下所有格的所有候选数
   const [markedCandidates, setMarkedCandidates] = useState([]); // 用户标记的所有格的候选数
   // 掩码候选数，是上述两者按照各格的交集
   const maskedCandidates = markedCandidates.map((row, r) => row.map((candidatesOfCell, c) => candidatesOfCell.map((is, num) => is && maxCandidates[r][c][num])));
+
   const rowContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
   const colContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
   const blkContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
+
   const [hint, setHint] = useState(null);
   const [noHintReason, setNoHintReason] = useState("");
   const [showingHint, setShowingHint] = useState(false);
@@ -28,7 +35,7 @@ export default function Start() {
   const [finished, setFinished] = useState(false);
 
   const [usedHint, setUsedHint] = useState(false);
-  const [usedAssist, setUsedAssist] = useState(false);
+  // const [usedAssist, setUsedAssist] = useState(false);
 
   const markingAssistRef = useRef(false); // 是否开启标记辅助
   const beginWithMarksRef = useRef(false); // 是否开启开局标记
@@ -57,12 +64,14 @@ export default function Start() {
 
   useEffect(() => {
     invoke('get_difficulty').then((difficulty) => setDifficulty(difficulty));
-    invoke('get_marking_assist').then((markingAssist) => { markingAssistRef.current = markingAssist; setUsedAssist(markingAssist); });
+    invoke('get_marking_assist').then((markingAssist) => { markingAssistRef.current = markingAssist; /*setUsedAssist(markingAssist);*/ });
     invoke('get_begin_with_marks').then((beginWithMarks) => { beginWithMarksRef.current = beginWithMarks; });
   }, []);
 
   const init = useCallback((grid) => {
-    setGrid(grid);
+    // setGrid(grid);
+    dispatchGrid({ type: 'set', newGrid: grid });
+
     setMaxCandidates(getMaxCandidates(grid));
     if (beginWithMarksRef.current) {
       setMarkedCandidates(getMaxCandidates(grid));
@@ -73,7 +82,9 @@ export default function Start() {
     setTime(0);
     hideHint();
     setUsedHint(false);
-    setUsedAssist(markingAssistRef.current);
+    setFinished(false);
+
+    // setUsedAssist(markingAssistRef.current);
     historyRef.current = [];
     futureRef.current = [];
   }, []);
@@ -111,9 +122,10 @@ export default function Start() {
   }, [getPuzzle]);
 
   const newPuzzle = () => {
-    setGrid(null);
+    // setGrid(null);
+    dispatchGrid({ type: 'set', newGrid: null });
+
     getPuzzle();
-    setFinished(false);
   };
 
   const clear = () => {
@@ -150,14 +162,20 @@ export default function Start() {
       invoke('judge_sudoku', { grid: grid.map((row) => row.map((grid) => grid.value)) })
         .then(([finished, validCond]) => {
           setFinished(finished);
-          setGrid((prev) => {
-            prev[r][c].value = num;
-            setMaxCandidates(getMaxCandidates(prev));
-            return prev.map((row, r) => row.map((cell, c) => ({
-              ...cell,
-              valid: validCond[r][c],
-            })))
+          setMaxCandidates(getMaxCandidates(grid));
+
+          dispatchGrid({
+            type: 'fill',
+            r, c, num,
+            validity: validCond[r][c]
           });
+          // setGrid((prev) => {
+          //   prev[r][c].value = num;
+          //   return prev.map((row, r) => row.map((cell, c) => ({
+          //     ...cell,
+          //     valid: validCond[r][c],
+          //   })))
+          // });
         });
     }
   }, [grid, markedCandidates, pushHistory]);
@@ -180,7 +198,8 @@ export default function Start() {
         markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
       });
       let { grid: g, markedCandidates: m } = historyRef.current.pop();
-      setGrid(g);
+      // setGrid(g);
+      dispatchGrid({ type: 'set', newGrid: g });
       setMaxCandidates(getMaxCandidates(g));
       setMarkedCandidates(m);
       hideHint();
@@ -194,7 +213,8 @@ export default function Start() {
         markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
       });
       let { grid: g, markedCandidates: m } = futureRef.current.pop();
-      setGrid(g);
+      // setGrid(g);
+      dispatchGrid({ type: 'set', newGrid: g });
       setMaxCandidates(getMaxCandidates(g));
       setMarkedCandidates(m);
       hideHint();
@@ -263,6 +283,9 @@ export default function Start() {
       window.removeEventListener('keydown', onKeyDown);
     };
   }, [onKeyDown]);
+
+
+  const currentCellRef = useRef();
 
   const handleMouseEnter = (r, c) => {
     currentCellRef.current = [r, c];
@@ -344,9 +367,9 @@ export default function Start() {
                       <>
                         <p className="text-4xl font-bold mb-1">已完成!</p>
                         <p className="text-muted-foreground text-sm">
-                          {
+                          {/* {
                             usedAssist ? <span>已使用辅助 </span> : <></>
-                          }
+                          } */}
                           {
                             usedHint ? <span>已使用提示</span> : <></>
                           }
@@ -392,7 +415,7 @@ export default function Start() {
                                   <Button
                                     variant="default"
                                     onClick={() => {
-                                      setUsedAssist(true);
+                                      // setUsedAssist(true);
                                       pushHistory(grid, markedCandidates);
                                       setMarkedCandidates(getMaxCandidates(grid));
                                       setShowingHint(false);
