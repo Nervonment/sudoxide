@@ -29,11 +29,6 @@ fn main() {
             get_sudoku_puzzle,
             judge_sudoku,
             set_difficulty,
-            get_difficulty,
-            set_marking_assist,
-            get_marking_assist,
-            set_begin_with_marks,
-            get_begin_with_marks,
             get_hint
         ])
         .run(tauri::generate_context!())
@@ -43,17 +38,11 @@ fn main() {
 #[derive(Serialize)]
 struct Settings {
     difficulty: u8,
-    marking_assist: bool,
-    begin_with_marks: bool,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self {
-            difficulty: 1,
-            marking_assist: true,
-            begin_with_marks: false,
-        }
+        Self { difficulty: 1 }
     }
 }
 
@@ -87,31 +76,6 @@ fn set_difficulty(new_difficulty: u8, settings: State<'_, SettingsState>) {
         new_difficulty
     };
     settings.0.lock().unwrap().difficulty = new_difficulty;
-}
-
-#[tauri::command]
-fn get_difficulty(settings: State<'_, SettingsState>) -> Result<u8, ()> {
-    Ok(settings.0.lock().unwrap().difficulty)
-}
-
-#[tauri::command]
-fn set_marking_assist(marking_assist: bool, settings: State<'_, SettingsState>) {
-    settings.0.lock().unwrap().marking_assist = marking_assist;
-}
-
-#[tauri::command]
-fn get_marking_assist(settings: State<'_, SettingsState>) -> Result<bool, ()> {
-    Ok(settings.0.lock().unwrap().marking_assist)
-}
-
-#[tauri::command]
-fn set_begin_with_marks(begin_with_marks: bool, settings: State<'_, SettingsState>) {
-    settings.0.lock().unwrap().begin_with_marks = begin_with_marks;
-}
-
-#[tauri::command]
-fn get_begin_with_marks(settings: State<'_, SettingsState>) -> Result<bool, ()> {
-    Ok(settings.0.lock().unwrap().begin_with_marks)
 }
 
 #[derive(Serialize)]

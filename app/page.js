@@ -12,31 +12,30 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { SettingsContext } from "@/lib/SettingsContext";
+import useSettings from "@/lib/useSettings";
 import { cn, difficultyDesc } from "@/lib/utils";
 import { getVersion } from "@tauri-apps/api/app";
-import { invoke } from "@tauri-apps/api/tauri";
 import { checkUpdate, installUpdate } from "@tauri-apps/api/updater";
 import { ChevronDown, HelpCircle, Loader2, Settings2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Poppins } from "next/font/google";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 export default function Home() {
-  const [difficulty, setDifficulty] = useState(2);
-  const [markingAssist, setMarkingAssist] = useState(false);
-  const [beginWithMarks, setBeginWithMarks] = useState(false);
+  const {
+    difficulty, setDifficulty,
+    markingAssist, setMarkingAssist,
+    beginWithMarks, setBeginWithMarks
+  } = useContext(SettingsContext);
+
   const [appVersion, setAppversion] = useState("");
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [updateManifest, setUpdateManifest] = useState({});
   const [updating, setUpdating] = useState(false);
   const [updateFailed, setUpdateFailed] = useState(false);
 
-  useEffect(() => {
-    invoke('get_difficulty').then((difficulty) => setDifficulty(difficulty));
-    invoke('get_marking_assist').then((markingAssist) => setMarkingAssist(markingAssist));
-    invoke('get_begin_with_marks').then((beginWithMarks) => setBeginWithMarks(beginWithMarks));
-  }, []);
 
   useEffect(() => {
     getVersion().then(setAppversion);
@@ -96,7 +95,6 @@ export default function Home() {
                 defaultValue={[difficulty]}
                 onValueChange={([value]) => {
                   setDifficulty(value);
-                  invoke('set_difficulty', { newDifficulty: value });
                 }}
                 max={5}
                 step={1}
@@ -117,7 +115,6 @@ export default function Home() {
                 checked={markingAssist}
                 onCheckedChange={(checked) => {
                   setMarkingAssist(checked);
-                  invoke('set_marking_assist', { markingAssist: checked });
                 }}
               />
             </div>
@@ -136,7 +133,6 @@ export default function Home() {
                 checked={beginWithMarks}
                 onCheckedChange={(checked) => {
                   setBeginWithMarks(checked);
-                  invoke('set_begin_with_marks', { beginWithMarks: checked });
                 }}
               />
             </div>
