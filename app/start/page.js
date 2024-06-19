@@ -2,92 +2,80 @@
 
 import { Label } from "@/components/ui/label";
 import SudokuGrid from "@/components/sudoku_grid";
-import { cn, difficultyDesc } from "@/lib/utils";
+import { cn, difficultyDesc, restBlankCount } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/tauri";
 import { Check, HelpCircle, Lightbulb, Loader2, Redo, RefreshCcw, SquarePen, Tornado, Trash2, Undo, Undo2, X } from "lucide-react";
-import { useCallback, useEffect, useReducer, useRef, useState } from "react"
+import { useCallback, useContext, useEffect, useReducer, useRef, useState } from "react"
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useRouter } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import gridReducer from "@/lib/gridReducer";
+import { useMaxCandidates } from "@/lib/useMaxCandidates";
+import useTimer from "@/lib/useTimer";
+import { SettingsContext } from "@/lib/SettingsContext";
+import useHistory from "@/lib/useHistory";
+
+function ToolBoxItem({ icon, desc, onClick }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="link" onClick={onClick}>
+            {icon}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{desc}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
 export default function Start() {
-  // const [grid, setGrid] = useState();
   const [grid, dispatchGrid] = useReducer(gridReducer, null);
+  
+  const currentCellRef = useRef();
+  const handleMouseEnter = (r, c) => {
+    currentCellRef.current = [r, c];
+  }
+  const handleMouseLeave = () => {
+    currentCellRef.current = null;
+  }
 
-
-
-
-  const [maxCandidates, setMaxCandidates] = useState([]); // 当前局面下所有格的所有候选数
+  const getMaxCandidates = useMaxCandidates();
+  const maxCandidates = getMaxCandidates(grid); // 当前局面下所有格的所有候选数
   const [markedCandidates, setMarkedCandidates] = useState([]); // 用户标记的所有格的候选数
   // 掩码候选数，是上述两者按照各格的交集
-  const maskedCandidates = markedCandidates.map((row, r) => row.map((candidatesOfCell, c) => candidatesOfCell.map((is, num) => is && maxCandidates[r][c][num])));
+  const maskedCandidates = maxCandidates && markedCandidates.map((row, r) => row.map((candidatesOfCell, c) => candidatesOfCell.map((is, num) => is && maxCandidates[r][c][num])));
 
-  const rowContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
-  const colContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
-  const blkContainsRef = useRef(Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false)));
+  const { clearHistory, pushHistory, undo, redo } = useHistory();
 
   const [hint, setHint] = useState(null);
   const [noHintReason, setNoHintReason] = useState("");
   const [showingHint, setShowingHint] = useState(false);
-  const [time, setTime] = useState(0);
+
   const [finished, setFinished] = useState(false);
-
+  const { timeStr, reset } = useTimer(finished);
   const [usedHint, setUsedHint] = useState(false);
-  // const [usedAssist, setUsedAssist] = useState(false);
 
-  const markingAssistRef = useRef(false); // 是否开启标记辅助
-  const beginWithMarksRef = useRef(false); // 是否开启开局标记
-
-  const historyRef = useRef([]);
-  const futureRef = useRef([]);
-
-  const timeMin = parseInt(time / 60);
-  const timeSec = (() => {
-    let sec = time % 60;
-    return sec < 10 ? `0${sec}` : sec;
-  })();
-  const rest = (() => {
-    let res = 0;
-    if (grid)
-      grid.forEach(row => {
-        row.forEach(cell => {
-          if (cell.value == 0)
-            res += 1;
-        });
-      });
-    return res;
-  })();
-
-  const [difficulty, setDifficulty] = useState(2);
-
-  useEffect(() => {
-    invoke('get_difficulty').then((difficulty) => setDifficulty(difficulty));
-    invoke('get_marking_assist').then((markingAssist) => { markingAssistRef.current = markingAssist; /*setUsedAssist(markingAssist);*/ });
-    invoke('get_begin_with_marks').then((beginWithMarks) => { beginWithMarksRef.current = beginWithMarks; });
-  }, []);
+  const { difficulty, markingAssist, beginWithMarks } = useContext(SettingsContext);
 
   const init = useCallback((grid) => {
-    // setGrid(grid);
     dispatchGrid({ type: 'set', newGrid: grid });
 
-    setMaxCandidates(getMaxCandidates(grid));
-    if (beginWithMarksRef.current) {
+    if (beginWithMarks) {
       setMarkedCandidates(getMaxCandidates(grid));
-      // setMarkedCandidates(Array.from({ length: 9 }, (v) => Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => true))));
     } else {
       setMarkedCandidates(Array.from({ length: 9 }, (v) => Array.from({ length: 9 }, (v) => Array.from({ length: 10 }, (v) => false))));
     }
-    setTime(0);
+    reset();
     hideHint();
     setUsedHint(false);
     setFinished(false);
-
-    // setUsedAssist(markingAssistRef.current);
-    historyRef.current = [];
-    futureRef.current = [];
-  }, []);
+    clearHistory();
+  }, [getMaxCandidates, beginWithMarks, reset, clearHistory]);
 
   const getPuzzle = useCallback(() => {
     invoke('get_sudoku_puzzle').then((grid) => {
@@ -96,35 +84,12 @@ export default function Start() {
     });
   }, [init]);
 
-  const getMaxCandidates = (grid) => {
-    rowContainsRef.current.forEach((row) => row.fill(false));
-    colContainsRef.current.forEach((col) => col.fill(false));
-    blkContainsRef.current.forEach((blk) => blk.fill(false));
-    let rc2b = (r, c) => parseInt(r / 3) * 3 + parseInt(c / 3);
-    grid.forEach((row, r) => {
-      row.forEach((cell, c) => {
-        let num = cell.value;
-        rowContainsRef.current[r][num] = true;
-        colContainsRef.current[c][num] = true;
-        blkContainsRef.current[rc2b(r, c)][num] = true;
-      });
-    });
-    return grid.map((row, r) => row.map((cell, c) => ([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-      grid[r][c].value == 0
-      && !rowContainsRef.current[r][num]
-      && !colContainsRef.current[c][num]
-      && !blkContainsRef.current[rc2b(r, c)][num]
-    )))));
-  };
-
   useEffect(() => {
     getPuzzle();
   }, [getPuzzle]);
 
   const newPuzzle = () => {
-    // setGrid(null);
     dispatchGrid({ type: 'set', newGrid: null });
-
     getPuzzle();
   };
 
@@ -135,25 +100,6 @@ export default function Start() {
     }
   };
 
-  useEffect(() => {
-    let updateTime = !finished ?
-      setInterval(() => {
-        setTime((prev) => prev + 1);
-      }, 1000) : null;
-    return () => {
-      if (updateTime)
-        clearInterval(updateTime);
-    };
-  }, [finished]);
-
-  const pushHistory = useCallback((grid, markedCandidates) => {
-    historyRef.current.push({
-      grid: grid.map((row) => row.map((cell) => ({ ...cell }))),
-      markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
-    });
-    futureRef.current = [];
-  }, []);
-
   const fillGrid = useCallback((r, c, num) => {
     if (grid[r][c].value != num) {
       pushHistory(grid, markedCandidates);
@@ -162,20 +108,12 @@ export default function Start() {
       invoke('judge_sudoku', { grid: grid.map((row) => row.map((grid) => grid.value)) })
         .then(([finished, validCond]) => {
           setFinished(finished);
-          setMaxCandidates(getMaxCandidates(grid));
 
           dispatchGrid({
             type: 'fill',
             r, c, num,
-            validity: validCond[r][c]
+            validCond: validCond
           });
-          // setGrid((prev) => {
-          //   prev[r][c].value = num;
-          //   return prev.map((row, r) => row.map((cell, c) => ({
-          //     ...cell,
-          //     valid: validCond[r][c],
-          //   })))
-          // });
         });
     }
   }, [grid, markedCandidates, pushHistory]);
@@ -191,45 +129,29 @@ export default function Start() {
     })
   };
 
-  const undo = useCallback(() => {
-    if (!finished && historyRef.current.length != 0) {
-      futureRef.current.push({
-        grid: grid.map((row) => row.map((cell) => ({ ...cell }))),
-        markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
-      });
-      let { grid: g, markedCandidates: m } = historyRef.current.pop();
-      // setGrid(g);
-      dispatchGrid({ type: 'set', newGrid: g });
-      setMaxCandidates(getMaxCandidates(g));
-      setMarkedCandidates(m);
-      hideHint();
-    }
-  }, [grid, markedCandidates, finished]);
+  const handleUndo = useCallback(() => {
+    const { grid: prevGrid, markedCandidates: prevMarkedCandidates } = undo(grid, markedCandidates);
+    dispatchGrid({ type: 'set', newGrid: prevGrid });
+    setMarkedCandidates(prevMarkedCandidates);
+    hideHint();
+  }, [undo, grid, markedCandidates]);
 
-  const redo = useCallback(() => {
-    if (!finished && futureRef.current.length != 0) {
-      historyRef.current.push({
-        grid: grid.map((row) => row.map((cell) => ({ ...cell }))),
-        markedCandidates: markedCandidates.map((row) => row.map((cell) => cell.slice()))
-      });
-      let { grid: g, markedCandidates: m } = futureRef.current.pop();
-      // setGrid(g);
-      dispatchGrid({ type: 'set', newGrid: g });
-      setMaxCandidates(getMaxCandidates(g));
-      setMarkedCandidates(m);
-      hideHint();
-    }
-  }, [grid, markedCandidates, finished]);
+  const handleRedo = useCallback(() => {
+    const { grid: nextGrid, markedCandidates: nextMarkedCandidates } = redo(grid, markedCandidates);
+    dispatchGrid({ type: 'set', newGrid: nextGrid });
+    setMarkedCandidates(nextMarkedCandidates);
+    hideHint();
+  }, [redo, grid, markedCandidates])
 
   const onKeyDown = useCallback((event) => {
     if (!finished && grid && markedCandidates) {
       // 撤销
       if (event.key == 'z') {
-        undo();
+        handleUndo();
       }
       // 重做
       else if (event.key == 'x') {
-        redo();
+        handleRedo();
       }
       // 填数或标记候选数
       else if (currentCellRef.current) {
@@ -251,7 +173,7 @@ export default function Start() {
           else {
             // 没有开启标记辅助时，可以标记任意数字
             // 开启时，只能标记 maxCandidates[r][c] 中的数字
-            if (grid[r][c].value == 0 && (!markingAssistRef.current || maxCandidates[r][c][num] || event.key == ' ')) {
+            if (grid[r][c].value == 0 && (!markingAssist || maxCandidates[r][c][num] || event.key == ' ')) {
               if (event.key == ' ') { // 按空格键 
                 if (!markedCandidates[r][c].every((is, num) => num == 0 || !is)) {
                   pushHistory(grid, markedCandidates);
@@ -275,7 +197,7 @@ export default function Start() {
         }
       }
     }
-  }, [grid, finished, maxCandidates, markedCandidates, pushHistory, fillGrid, undo, redo]);
+  }, [grid, finished, maxCandidates, markedCandidates, pushHistory, fillGrid, handleUndo, handleRedo, markingAssist]);
 
   useEffect(() => {
     window.addEventListener('keydown', onKeyDown);
@@ -284,21 +206,11 @@ export default function Start() {
     };
   }, [onKeyDown]);
 
-
-  const currentCellRef = useRef();
-
-  const handleMouseEnter = (r, c) => {
-    currentCellRef.current = [r, c];
-  }
-  const handleMouseLeave = () => {
-    currentCellRef.current = null;
-  }
-
   const getHintAndShow = () => {
     if (!finished && grid)
       invoke('get_hint', {
         grid: grid.map((row) => row.map((cell) => cell.value)),
-        candidates: markingAssistRef.current ? maskedCandidates : markedCandidates
+        candidates: markingAssist ? maskedCandidates : markedCandidates
       }).then((hint) => {
         setUsedHint(true);
         setHint(hint[0]);
@@ -313,7 +225,7 @@ export default function Start() {
   }
 
   const applyHintOption = () => {
-    if (hint) {
+    if (hint && grid) {
       let option = hint.option;
       if ("Direct" in option) {
         fillGrid(option.Direct[0], option.Direct[1], option.Direct[2]);
@@ -336,7 +248,7 @@ export default function Start() {
           <>
             <SudokuGrid
               grid={grid}
-              candidates={markingAssistRef.current ? maskedCandidates : markedCandidates}
+              candidates={markingAssist ? maskedCandidates : markedCandidates}
               handleMouseEnter={handleMouseEnter}
               handleMouseLeave={handleMouseLeave}
               visualElements={hint ? hint.visual_elements : null}
@@ -354,25 +266,20 @@ export default function Start() {
                   <Label className="text-muted-foreground">难度</Label>
                 </div>
                 <div className="flex flex-col gap-1 items-center w-full">
-                  <p className="text-4xl font-bold">{timeMin}:{timeSec}</p>
+                  <p className="text-4xl font-bold">{timeStr}</p>
                   <Label className="text-muted-foreground">用时</Label>
                 </div>
                 <div className="flex flex-col gap-1 items-center w-full h-32 z-20">
                   {
                     !finished ?
                       <>
-                        <p className="text-4xl font-bold">{rest}</p>
+                        <p className="text-4xl font-bold">{restBlankCount(grid)}</p>
                         <Label className="text-muted-foreground">剩余</Label>
                       </> :
                       <>
                         <p className="text-4xl font-bold mb-1">已完成!</p>
                         <p className="text-muted-foreground text-sm">
-                          {/* {
-                            usedAssist ? <span>已使用辅助 </span> : <></>
-                          } */}
-                          {
-                            usedHint ? <span>已使用提示</span> : <></>
-                          }
+                          {usedHint && <span>已使用提示</span>}
                         </p>
                         <Button onClick={newPuzzle}>下一个</Button>
                       </>
@@ -385,8 +292,9 @@ export default function Start() {
                 showingHint ? "opacity-100" : "opacity-0"
               )}>
                 {
-                  showingHint ?
-                    (hint ?
+                  showingHint &&
+                  (
+                    hint ?
                       <div className="w-full flex flex-col items-center gap-2">
                         <Label className="text-muted-foreground">{hint.name}</Label>
                         <p>
@@ -414,8 +322,8 @@ export default function Start() {
                                 <div className="flex gap-2">
                                   <Button
                                     variant="default"
+                                    size="icon"
                                     onClick={() => {
-                                      // setUsedAssist(true);
                                       pushHistory(grid, markedCandidates);
                                       setMarkedCandidates(getMaxCandidates(grid));
                                       setShowingHint(false);
@@ -425,6 +333,7 @@ export default function Start() {
                                   </Button>
                                   <Button
                                     variant="secondary"
+                                    size="icon"
                                     onClick={() => {
                                       setShowingHint(false);
                                     }}
@@ -435,8 +344,7 @@ export default function Start() {
                               </div>
                               : <></>
                       )
-                    )
-                    : <></>
+                  )
                 }
               </div>
 
@@ -472,83 +380,16 @@ export default function Start() {
       }
 
       <div className="absolute right-0 flex flex-col gap-1">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="link" onClick={showingHint && hint ? applyHintOption : getHintAndShow}>
-                {showingHint && hint ? <SquarePen /> : <Lightbulb />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{showingHint && hint ? "执行" : "提示"}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="link" onClick={undo}>
-                <Undo />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>撤销(Z)</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="link" onClick={redo}>
-                <Redo />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>重做(X)</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="link" onClick={newPuzzle}>
-                <RefreshCcw />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>换一道题</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="link" onClick={clear}>
-                <Trash2 />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>清空</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="link" onClick={() => router.replace("/")}>
-                <Undo2 />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>返回首页</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <ToolBoxItem
+          icon={showingHint && hint ? <SquarePen /> : <Lightbulb />}
+          desc={showingHint && hint ? "执行" : "提示"}
+          onClick={showingHint && hint ? applyHintOption : getHintAndShow}
+        />
+        <ToolBoxItem icon={<Undo />} desc={"撤销(Z)"} onClick={handleUndo}/>
+        <ToolBoxItem icon={<Redo />} desc={"重做(X)"} onClick={handleRedo}/>
+        <ToolBoxItem icon={<RefreshCcw />} desc={"换一道题"} onClick={newPuzzle}/>
+        <ToolBoxItem icon={<Trash2 />} desc={"清空"} onClick={clear}/>
+        <ToolBoxItem icon={<Undo2 />} desc={"返回首页"} onClick={() => router.replace("/")}/>
       </div>
     </div >
   )
