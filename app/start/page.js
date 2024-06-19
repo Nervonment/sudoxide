@@ -35,7 +35,7 @@ function ToolBoxItem({ icon, desc, onClick }) {
 
 export default function Start() {
   const [grid, dispatchGrid] = useReducer(gridReducer, null);
-  
+
   const currentCellRef = useRef();
   const handleMouseEnter = (r, c) => {
     currentCellRef.current = [r, c];
@@ -130,17 +130,23 @@ export default function Start() {
   };
 
   const handleUndo = useCallback(() => {
-    const { grid: prevGrid, markedCandidates: prevMarkedCandidates } = undo(grid, markedCandidates);
-    dispatchGrid({ type: 'set', newGrid: prevGrid });
-    setMarkedCandidates(prevMarkedCandidates);
-    hideHint();
+    const prev = undo(grid, markedCandidates);
+    if (prev) {
+      const { grid: prevGrid, markedCandidates: prevMarkedCandidates } = prev;
+      dispatchGrid({ type: 'set', newGrid: prevGrid });
+      setMarkedCandidates(prevMarkedCandidates);
+      hideHint();
+    }
   }, [undo, grid, markedCandidates]);
 
   const handleRedo = useCallback(() => {
-    const { grid: nextGrid, markedCandidates: nextMarkedCandidates } = redo(grid, markedCandidates);
-    dispatchGrid({ type: 'set', newGrid: nextGrid });
-    setMarkedCandidates(nextMarkedCandidates);
-    hideHint();
+    const next = redo(grid, markedCandidates);
+    if (next) {
+      const { grid: nextGrid, markedCandidates: nextMarkedCandidates } = next;
+      dispatchGrid({ type: 'set', newGrid: nextGrid });
+      setMarkedCandidates(nextMarkedCandidates);
+      hideHint();
+    }
   }, [redo, grid, markedCandidates])
 
   const onKeyDown = useCallback((event) => {
@@ -385,11 +391,11 @@ export default function Start() {
           desc={showingHint && hint ? "执行" : "提示"}
           onClick={showingHint && hint ? applyHintOption : getHintAndShow}
         />
-        <ToolBoxItem icon={<Undo />} desc={"撤销(Z)"} onClick={handleUndo}/>
-        <ToolBoxItem icon={<Redo />} desc={"重做(X)"} onClick={handleRedo}/>
-        <ToolBoxItem icon={<RefreshCcw />} desc={"换一道题"} onClick={newPuzzle}/>
-        <ToolBoxItem icon={<Trash2 />} desc={"清空"} onClick={clear}/>
-        <ToolBoxItem icon={<Undo2 />} desc={"返回首页"} onClick={() => router.replace("/")}/>
+        <ToolBoxItem icon={<Undo />} desc={"撤销(Z)"} onClick={handleUndo} />
+        <ToolBoxItem icon={<Redo />} desc={"重做(X)"} onClick={handleRedo} />
+        <ToolBoxItem icon={<RefreshCcw />} desc={"换一道题"} onClick={newPuzzle} />
+        <ToolBoxItem icon={<Trash2 />} desc={"清空"} onClick={clear} />
+        <ToolBoxItem icon={<Undo2 />} desc={"返回首页"} onClick={() => router.replace("/")} />
       </div>
     </div >
   )

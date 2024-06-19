@@ -12,7 +12,16 @@
   },
   "tauri": {
     "allowlist": {
-      "all": false
+      "fs": {
+        "exists": true,
+        "createDir": true,
+        "readFile": true,
+        "scope": [
+          "$APPCONFIG/*",
+          "$APPCONFIG"
+        ],
+        "writeFile": true
+      }
     },
     "bundle": {
       "active": true,
@@ -29,7 +38,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.build",
+      "identifier": "sudoxide",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
