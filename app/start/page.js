@@ -393,7 +393,7 @@ export default function Start() {
         />
         <ToolBoxItem icon={<Undo />} desc={"撤销(Z)"} onClick={handleUndo} />
         <ToolBoxItem icon={<Redo />} desc={"重做(X)"} onClick={handleRedo} />
-        <ToolBoxItem icon={<RefreshCcw />} desc={"换一道题"} onClick={newPuzzle} />
+        <ToolBoxItem icon={<RefreshCcw />} desc={"换一道题"} onClick={() => { if (grid) newPuzzle(); }} />
         <ToolBoxItem icon={<Trash2 />} desc={"清空"} onClick={clear} />
         <ToolBoxItem icon={<Undo2 />} desc={"返回首页"} onClick={() => router.replace("/")} />
       </div>
