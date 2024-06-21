@@ -2,6 +2,7 @@ use serde::Serialize;
 use sudoku::state::full_state::FullState;
 use sudoku::techniques::{DirectOption, House, ReducingCandidatesOption, Technique};
 
+pub mod fish;
 pub mod hidden_subsets;
 pub mod locked_candidates;
 pub mod naked_subsets;
@@ -35,19 +36,19 @@ pub trait GetHint: Technique<FullState> {
     fn get_hint(&self) -> Option<Hint>;
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Segment {
     pub text: String,
     pub color: Color,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Element {
     pub kind: ElementType,
     pub color: Color,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub enum Color {
     TextDefault,
     House1,
@@ -58,7 +59,7 @@ pub enum Color {
     CandidateToRemove,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub enum ElementType {
     #[serde(with = "HouseDef")]
     House(House),
@@ -90,6 +91,51 @@ pub trait To<T> {
     fn num_to_fill(&self) -> T;
     fn candidate_to_remove(&self) -> T;
     fn candidate_to_reserve(&self) -> T;
+}
+
+impl To<Segment> for &str {
+    fn text_default(&self) -> Segment {
+        Segment {
+            text: (*self).to_owned(),
+            color: Color::TextDefault,
+        }
+    }
+    fn house1(&self) -> Segment {
+        Segment {
+            text: (*self).to_owned(),
+            color: Color::House1,
+        }
+    }
+    fn house2(&self) -> Segment {
+        Segment {
+            text: (*self).to_owned(),
+            color: Color::House2,
+        }
+    }
+    fn cell1(&self) -> Segment {
+        Segment {
+            text: (*self).to_owned(),
+            color: Color::Cell1,
+        }
+    }
+    fn num_to_fill(&self) -> Segment {
+        Segment {
+            text: (*self).to_owned(),
+            color: Color::NumToFill,
+        }
+    }
+    fn candidate_to_remove(&self) -> Segment {
+        Segment {
+            text: (*self).to_owned(),
+            color: Color::CandidateToRemove,
+        }
+    }
+    fn candidate_to_reserve(&self) -> Segment {
+        Segment {
+            text: (*self).to_owned(),
+            color: Color::CandidateToReserve,
+        }
+    }
 }
 
 impl To<Segment> for String {
@@ -226,7 +272,6 @@ impl To<Element> for (usize, usize) {
         }
     }
 }
-
 
 impl To<Element> for (usize, usize, i8) {
     fn text_default(&self) -> Element {

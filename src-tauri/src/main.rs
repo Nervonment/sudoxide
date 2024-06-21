@@ -13,10 +13,7 @@ use sudoku::{
     solver::{advanced::AdvancedSolver, Solver},
     state::full_state::FullState,
     techniques::{
-        hidden_subsets::HiddenPair,
-        locked_candidates::{Claiming, Pointing},
-        naked_subsets::{NakedPair, NakedSubset},
-        singles::{HiddenSingle, NakedSingle},
+        fish::{Jellyfish, Swordfish, XWing}, hidden_subsets::HiddenPair, locked_candidates::{Claiming, Pointing}, naked_subsets::{NakedPair, NakedSubset}, singles::{HiddenSingle, NakedSingle}
     },
     Grid,
 };
@@ -98,14 +95,17 @@ fn get_hint(grid: [[i8; 9]; 9], candidates: [[[bool; 10]; 9]; 9]) -> (Option<Hin
         return (None, GetHintResult::WrongMark);
     }
 
-    let techniques: [&mut dyn GetHint; 7] = [
+    let techniques: [&mut dyn GetHint; 10] = [
         &mut NakedSingle::default(),
         &mut HiddenSingle::default(),
         &mut Pointing::default(),
         &mut Claiming::default(),
         &mut NakedPair::default(),
+        &mut XWing::default(),
         &mut HiddenPair::default(),
         &mut NakedSubset::default(),
+        &mut Swordfish::default(),
+        &mut Jellyfish::default(),
     ];
 
     for technique in techniques {
