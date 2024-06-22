@@ -1,3 +1,5 @@
+![Sudoxide](./sudoxide.svg)
+
 # Sudoxide
 
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Nervonment/sudoxide/publish.yml?branch=main)](https://github.com/Nervonment/sudoxide/releases/latest)
